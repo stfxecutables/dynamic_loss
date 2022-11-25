@@ -8,3 +8,41 @@ line_length = 90
 atomic = true
 sections = ['FUTURE', 'STDLIB', 'THIRDPARTY', 'LOCALFOLDER', 'FIRSTPARTY']
 known_local_folder = ['src', 'test', 'tests']
+
+[tool.poetry]
+name = "dynamic_loss"
+version = "0.0.0"
+description = ""
+authors = ["Prahar Ijner", "Derek Berger"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10,<3.11"
+pytorch-lightning = "1.8.1"
+pytest = "6.2.5"
+scikit-image = "0.19.3"
+scikit-learn = "1.1.0"
+scipy = "1.7.2"
+seaborn = "0.12.0"
+lightning-bolts = "^0.6.0.post1"
+llvmlite = "0.39.1"
+matplotlib = "3.5.2"
+numba = "0.56.2"
+numpy = "1.22.3"
+pandas = "^1.5.1"
+tabulate = "0.8.9"
+tqdm = "4.63.2"
+typing-extensions = "4.2.0"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.10.0"
+flake8 = "^5.0.4"
+mypy = "^0.991"
+isort = "^5.10.1"
+autoflake8 = "^0.4.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
