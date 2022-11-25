@@ -1,0 +1,3 @@
+[submodule "MLE-Image-Classification"]
+	path = MLE-Image-Classification
+	url = git@github.com:stfxecutables/MLE-Image-Classification.git
