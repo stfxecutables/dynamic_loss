@@ -1,3 +1,13 @@
+from __future__ import annotations
+
+# fmt: off
+import sys  # isort: skip
+from pathlib import Path  # isort: skip
+ROOT = Path(__file__).resolve().parent.parent  # isort: skip
+sys.path.append(str(ROOT))  # isort: skip
+# fmt: on
+
+
 import sys
 from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
@@ -27,6 +37,7 @@ import torch.nn.functional as F
 import torch.nn.init as init
 from numpy import ndarray
 from pandas import DataFrame, Series
+from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 from pytorch_lightning import LightningModule, Trainer, seed_everything
 from pytorch_lightning.callbacks import (
     Callback,
@@ -37,42 +48,110 @@ from pytorch_lightning.callbacks import (
 from torch import Tensor
 from torch.autograd import Variable
 from torch.nn import Conv2d, LeakyReLU, Linear, Module, Sequential
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
+from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
 from torchmetrics.functional import accuracy
 from torchvision.models.resnet import Bottleneck, ResNet, _ovewrite_named_param, _resnet
 from typing_extensions import Literal
 
-
-def wide_resnet28_10(**kwargs: Any) -> ResNet:
-    _ovewrite_named_param(kwargs, "width_per_group", 64 * 2)
-    return _resnet(Bottleneck, [2, 2, 2, 2], weights=None, progress=False, **kwargs)
-
-
-def wide_resnet16_10(**kwargs: Any) -> ResNet:
-    _ovewrite_named_param(kwargs, "width_per_group", 64 * 2)
-    return _resnet(Bottleneck, [1, 1, 1, 1], weights=None, progress=False, **kwargs)
+from src.config import Config
+from src.enumerables import Phase
+from src.metrics import Metrics
+from src.wideresnet import WideResNet
 
 
-class WideResNet(LightningModule):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+class BaseModel(LightningModule):
+    def __init__(
+        self,
+        config: Config,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
-        self.model = wide_resnet16_10()
+        self.config = config
+        self.model: WideResNet
+        self.train_metrics = Metrics(self.config, Phase.Train)
+        self.val_metrics = Metrics(self.config, Phase.Val)
+        self.test_metrics = Metrics(self.config, Phase.Test)
 
+    @no_type_check
     def forward(self, x: Tensor) -> Tensor:
         return self.model(x)
 
+    @no_type_check
+    def training_step(
+        self, batch: Tuple[Tensor, Tensor], batch_idx: int, *args, **kwargs
+    ) -> Tensor:
+        preds, loss = self._shared_step(batch)[:2]
+        if batch_idx % 20 == 0 and batch_idx != 0:
+            self.train_metrics.log(self, preds=preds, target=batch[1])
+        self.log(f"{Phase.Train.value}/loss", loss, on_step=True)
+        return loss  # auto-logged by Lightning
 
-class WideResNet16_10(WideResNet):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    @no_type_check
+    def validation_step(
+        self, batch: Tuple[Tensor, Tensor], batch_idx: int, *args, **kwargs
+    ) -> Any:
+        preds, loss, target = self._shared_step(batch)
+        self.val_metrics.log(self, preds, target)
+        self.log(f"{Phase.Val.value}/loss", loss, prog_bar=True)
+
+    def predict_step(
+        self, batch: Any, batch_idx: int, dataloader_idx: Optional[int] = None
+    ) -> Any:
+        preds, loss, target = self._shared_step(batch)
+        self.log(f"{Phase.Pred.value}/loss", loss, prog_bar=True)
+        return preds
+
+    def _shared_step(self, batch: Tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor, Tensor]:
+        x, target = batch
+        preds = self(x)  # need pred.shape == (B, n_classes, H, W)
+        loss = self.loss(preds, target)
+        return preds, loss, target
+
+    def configure_optimizers(self) -> Tuple[List[Optimizer], List[_LRScheduler]]:
+        warmup = 2 if self.config.max_epochs <= 10 else 5
+        opt = AdamW(
+            self.parameters(),
+            lr=self.config.lr_init,
+            weight_decay=self.config.weight_decay,
+        )
+        sched = LinearWarmupCosineAnnealingLR(
+            optimizer=opt,
+            warmup_epochs=warmup,
+            max_epochs=self.config.max_epochs,
+            eta_min=1e-9,
+        )
+        return [opt], [sched]
+
+
+class WideResNet16_8(BaseModel):
+    def __init__(
+        self,
+        num_classes: int = 10,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
-        self.model = wide_resnet16_10()
+        self.depth = 16
+        self.k = 8
+        self.num_classes = num_classes
+        self.model = WideResNet(depth=self.depth, k=self.k, num_classes=num_classes)
 
 
-class WideResNet28_10(WideResNet):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+class WideResNet28_10(BaseModel):
+    def __init__(
+        self,
+        num_classes: int = 10,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
-        self.model = wide_resnet28_10()
+        self.depth = 28
+        self.k = 10
+        self.num_classes = num_classes
+        self.model = WideResNet(depth=self.depth, k=self.k, num_classes=num_classes)
 
 
 if __name__ == "__main__":
