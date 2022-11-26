@@ -4,6 +4,6 @@ PROJECT="$THIS_SCRIPT_DIR"
 APPTAINER="$PROJECT/apptainer/dynamic_loss.sif"
 
 cd "$PROJECT" || exit 1
-module load apptainer/1.0
+module load apptainer/1.0 cuda/11.7
 echo "Running $1 with container $APPTAINER:"
-apptainer run --bind "$(readlink -f "$PROJECT")" --nv --app python "$APPTAINER" "$1"
+apptainer run --bind "$(readlink -f "$PROJECT")" --nv --app python "$APPTAINER" "$@"

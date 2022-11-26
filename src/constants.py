@@ -17,6 +17,15 @@ DATA = ensure_dir(ROOT / "data")
 LOG_ROOT_DIR = ensure_dir(ROOT / "logs")
 
 VAL_SIZE = 0.2
+"""
+CIFAR-10
+    At batch=256, WR16-10 w/ default lr, wd hits  0.739 val acc at 10 epochs
+    At batch=256, WR16-10 w/ default lr, wd hits  0.884 val acc at 21 epochs
+    At batch=256, WR16-10 w/ default lr, wd hits  0.892 val acc at 30 epochs
+    30 epochs = ~25 minutes
+
+"""
+BATCH_SIZE =
 
 """
 [General]
