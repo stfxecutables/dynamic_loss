@@ -30,8 +30,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
+import torch
 from numpy import ndarray
 from pandas import DataFrame, Series
+from torch import Tensor
 from typing_extensions import Literal
 
 
@@ -48,6 +50,23 @@ class VisionDataset(Enum):
     CIFAR10 = "cifar-10"
     CIFAR100 = "cifar-100"
 
+    def x_train(self) -> Path:
+        DATA = ROOT / "data"
+        return DATA / f"{self.value}_x_train.npy"
+
+    def x_test(self) -> Path:
+        DATA = ROOT / "data"
+        return DATA / f"{self.value}_x_test.npy"
+
+    def y_train(self) -> Path:
+        DATA = ROOT / "data"
+        return DATA / f"{self.value}_y_train.npy"
+
+    def y_test(self) -> Path:
+        DATA = ROOT / "data"
+        return DATA / f"{self.value}_y_test.npy"
+
+
 
 class VisionBinaryDataset(Enum):
     MNIST = "mnist-bin"
@@ -60,3 +79,19 @@ class VisionBinaryDataset(Enum):
             VisionBinaryDataset.FashionMNIST: [0, 6],
             VisionBinaryDataset.CIFAR10: [3, 5],
         }[self]
+
+    def x_train(self) -> Path:
+        DATA = ROOT / "data"
+        return DATA / f"{self.value}_x_train.npy"
+
+    def x_test(self) -> Path:
+        DATA = ROOT / "data"
+        return DATA / f"{self.value}_x_test.npy"
+
+    def y_train(self) -> Path:
+        DATA = ROOT / "data"
+        return DATA / f"{self.value}_y_train.npy"
+
+    def y_test(self) -> Path:
+        DATA = ROOT / "data"
+        return DATA / f"{self.value}_y_test.npy"

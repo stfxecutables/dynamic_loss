@@ -21,3 +21,6 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
 from torchmetrics.functional import accuracy
 from torchvision.datasets import CIFAR10, CIFAR100, MNIST, FashionMNIST
+
+if __name__ == "__main__":
+    pass

@@ -8,3 +8,9 @@ sys.path.append(str(ROOT))  # isort: skip
 # fmt: on
 
 
+def ensure_dir(path: Path) -> Path:
+    path.mkdir(exist_ok=True, parents=True)
+    return path
+
+
+DATA = ensure_dir(ROOT / "data")
