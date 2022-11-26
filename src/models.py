@@ -114,6 +114,42 @@ class BaseModel(LightningModule):
         self.log(f"{Phase.Pred.value}/loss", loss, prog_bar=True)
         return preds
 
+    @no_type_check
+    def test_step(
+        self, batch: Tuple[Tensor, Tensor], batch_idx: int, *args, **kwargs
+    ) -> Tensor:
+        preds, loss = self._shared_step(batch)[:2]
+        self.test_metrics.log(self, preds=preds, target=batch[1])
+        self.log(f"{Phase.Test.value}/loss", loss)
+        return {
+            "pred": preds.cpu().numpy(),
+            "loss": loss.cpu().numpy(),
+            "target": batch[1].cpu().numpy(),
+        }
+
+    @no_type_check
+    def test_epoch_end(self, outputs: list[dict[str, Tensor]]) -> None:
+        """Save predictions each epoch. We will compare to true values after."""
+        if self.trainer is None:
+            raise RuntimeError(f"LightningModule {self} has empty .trainer property")
+        preds = [output["pred"] for output in outputs]
+        targs = [output["target"] for output in outputs]
+        losses = [output["loss"] for output in outputs]
+
+        preds = np.concatenate(preds, dim=0)
+        targs = np.concatenate(targs, dim=0)
+        losses = np.ravel(losses)
+
+        epoch = int(self.current_epoch)
+        logdir = Path(self.trainer.log_dir)
+        outdir = logdir / "test_preds"
+        if not outdir.exists():
+            outdir.mkdir(exist_ok=True, parents=True)
+        outfile = outdir / f"test_preds_epoch={epoch:03d}.pt"
+        np.save(outfile, preds)
+        outfile = outdir / f"test_labels_epoch={epoch:03d}.pt"
+        np.save(outfile, targs)
+
     def _shared_step(self, batch: Tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor, Tensor]:
         x, target = batch
         preds = self(x)  # need pred.shape == (B, n_classes, H, W)

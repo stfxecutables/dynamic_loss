@@ -145,14 +145,14 @@ class Config:
         p.add_argument(
             "--num_workers",
             type=int_or_none,
-            help="Number of workers for dataloading.  Default 4.",
-            default=4,
+            help="Number of workers for dataloading.  Default 1.",
+            default=1,
         )
         return p
 
-    def log_base_dir(self) -> Path:
+    def log_base_dir(self, tune: bool = False) -> Path:
         """Directory is:
-        logs/[experiment]/[subset]/[fusion]/[data]/[binary]/[augment]
+        logs/[tune]/[experiment]/[subset]/[fusion]/[data]/[binary]/[augment]
         """
         e = self.experiment.value
         s = self.subset.value
@@ -160,7 +160,10 @@ class Config:
         d = self.vision_dataset.value
         b = "binary" if self.binary else "all-classes"
         a = "augmented" if self.augment else "no-augment"
-        outdir: Path = LOG_ROOT_DIR / f"{e}/{s}/{f}/{d}/{b}/{a}"
+        if tune:
+            outdir: Path = LOG_ROOT_DIR / f"tune/{e}/{s}/{f}/{d}/{b}/{a}"
+        else:
+            outdir: Path = LOG_ROOT_DIR / f"{e}/{s}/{f}/{d}/{b}/{a}"
         outdir.mkdir(parents=True, exist_ok=True)
         return outdir
 

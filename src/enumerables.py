@@ -155,6 +155,7 @@ class FusionMethod(ArgEnum):
     CNN = "cnn"  # "stacked" CNN
     MLP = "mlp"  # "stacked" MLP
 
+
 class Loss(ArgEnum):
     CrossEntropy = "cross-entropy"
     DynamicLoss = "dynamic"

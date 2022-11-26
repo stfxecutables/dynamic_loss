@@ -18,11 +18,19 @@ LOG_ROOT_DIR = ensure_dir(ROOT / "logs")
 
 VAL_SIZE = 0.2
 """
+Batch size of 1024 is viable for WR-16-10
 CIFAR-10
     At batch=256, WR16-10 w/ default lr, wd hits  0.739 val acc at 10 epochs
     At batch=256, WR16-10 w/ default lr, wd hits  0.884 val acc at 21 epochs
     At batch=256, WR16-10 w/ default lr, wd hits  0.892 val acc at 30 epochs
     30 epochs = ~25 minutes
+    No point in using more than 1 worker:
+
+        4 workers = ~45sec/epoch @1024
+        3 workers = ~43sec epoch @1024
+        2 workers = ~43sec epoch @1024
+        1 workers = ~43sec epoch @1024
+        0 workers = bad
 
 """
 # BATCH_SIZE =

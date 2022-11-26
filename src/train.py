@@ -60,7 +60,7 @@ from src.models import WideResNet, WideResNet16_8, WideResNet28_10
 
 
 def setup_logging(
-    config: Config,
+    config: Config, tune: bool = False
 ) -> Tuple[TensorBoardLogger, Path, UUID]:
     """Create TensorBoardLogger and ensure directories are present"""
     # see
@@ -72,7 +72,7 @@ def setup_logging(
     short_uuid = urlsafe_b64encode(uuid.bytes).decode("ascii").rstrip("=")[:8]
     unq = f"{date}{short_uuid}"
     logger = TensorBoardLogger(
-        save_dir=config.log_base_dir(),
+        save_dir=config.log_base_dir(tune=tune),
         name=unq,  # change this is if you want subfolders
         version=None,
         log_graph=False,
@@ -90,11 +90,14 @@ def setup_logging(
 def get_model(config: Config) -> LightningModule:
     return WideResNet16_8(config)
 
-if __name__ == "__main__":
-    filterwarnings("ignore", message=".*does not have many workers.*")
 
-    config, remain = Config.from_args()
-    logger, log_version_dir, uuid = setup_logging(config)
+def evaluate(argstr: str | None = None, tune: bool = False) -> None:
+    filterwarnings("ignore", message=".*does not have many workers.*")
+    if argstr is None:
+        config, remain = Config.from_args()
+    else:
+        config, remain = Config.from_args(argstr)
+    logger, log_version_dir, uuid = setup_logging(config, tune=tune)
     train, val, test = vision_loaders(config=config)
     model = get_model(config)
     parser = ArgumentParser()
@@ -108,3 +111,8 @@ if __name__ == "__main__":
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
+    trainer.test(model, test)
+
+
+if __name__ == "__main__":
+    evaluate()
