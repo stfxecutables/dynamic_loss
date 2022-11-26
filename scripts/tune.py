@@ -22,10 +22,11 @@ else:
 
 LRS = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
 WDS = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2]
-GRID = list(ParameterGrid(dict(lr=LRS, wd=WDS)))
+GRID = list(ParameterGrid(dict(lr=LRS, wd=WDS)))  # 30
 LR = GRID[INDEX]["lr"]
 WD = GRID[INDEX]["wd"]
 
 if __name__ == "__main__":
     print(f"Evaluating CIFAR-100 with LR={LR}, WD={WD}")
+    print(f"Grid search index {INDEX} of {len(GRID)}")
     evaluate(f"--dataset=cifar-100 --batch_size=1024 --num_workers=1 --lr={LR} --wd={WD}")

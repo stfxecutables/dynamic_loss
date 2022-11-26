@@ -136,8 +136,8 @@ class BaseModel(LightningModule):
         targs = [output["target"] for output in outputs]
         losses = [output["loss"] for output in outputs]
 
-        preds = np.concatenate(preds, dim=0)
-        targs = np.concatenate(targs, dim=0)
+        preds = np.concatenate(preds, axis=0)
+        targs = np.concatenate(targs, axis=0)
         losses = np.ravel(losses)
 
         epoch = int(self.current_epoch)
