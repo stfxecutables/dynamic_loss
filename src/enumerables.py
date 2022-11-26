@@ -40,3 +40,23 @@ class Phase(Enum):
     Val = "val"
     Pred = "pred"
     Test = "test"
+
+
+class VisionDataset(Enum):
+    MNIST = "mnist"
+    FashionMNIST = "fmnist"
+    CIFAR10 = "cifar-10"
+    CIFAR100 = "cifar-100"
+
+
+class VisionBinaryDataset(Enum):
+    MNIST = "mnist-bin"
+    FashionMNIST = "fmnist-bin"
+    CIFAR10 = "cifar-bin"
+
+    def classes(self) -> list[int]:
+        return {
+            VisionBinaryDataset.MNIST: [4, 9],
+            VisionBinaryDataset.FashionMNIST: [0, 6],
+            VisionBinaryDataset.CIFAR10: [3, 5],
+        }[self]

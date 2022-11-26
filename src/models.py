@@ -47,7 +47,7 @@ from pytorch_lightning.callbacks import (
 )
 from torch import Tensor
 from torch.autograd import Variable
-from torch.nn import Conv2d, LeakyReLU, Linear, Module, Sequential
+from torch.nn import BatchNorm1d, Dropout, LeakyReLU, Linear, Module, Sequential
 from torch.optim import Adam, AdamW
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
@@ -69,8 +69,9 @@ class BaseModel(LightningModule):
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
+        self.model: Module
         self.config = config
-        self.model: WideResNet
+        self.num_classes = config.num_classes
         self.train_metrics = Metrics(self.config, Phase.Train)
         self.val_metrics = Metrics(self.config, Phase.Val)
         self.test_metrics = Metrics(self.config, Phase.Test)
@@ -129,29 +130,85 @@ class BaseModel(LightningModule):
 class WideResNet16_8(BaseModel):
     def __init__(
         self,
-        num_classes: int = 10,
+        config: Config,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(config=config, *args, **kwargs)
         self.depth = 16
         self.k = 8
-        self.num_classes = num_classes
-        self.model = WideResNet(depth=self.depth, k=self.k, num_classes=num_classes)
+        self.model = WideResNet(depth=self.depth, k=self.k, num_classes=self.num_classes)
 
 
 class WideResNet28_10(BaseModel):
     def __init__(
         self,
-        num_classes: int = 10,
+        config: Config,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        super().__init__(*args, **kwargs)
+        super().__init__(config=config, *args, **kwargs)
         self.depth = 28
         self.k = 10
-        self.num_classes = num_classes
-        self.model = WideResNet(depth=self.depth, k=self.k, num_classes=num_classes)
+        self.model = WideResNet(depth=self.depth, k=self.k, num_classes=self.num_classes)
+
+
+class MlpBlock(Module):
+    """Simple blocks of https://arxiv.org/pdf/1705.03098.pdf"""
+
+    def __init__(self, width: int) -> None:
+        super().__init__()
+        self.block = Sequential(
+            Linear(width, width, bias=False),
+            BatchNorm1d(width),
+            LeakyReLU(),
+            Dropout(0.5),
+            Linear(width, width, bias=False),
+            BatchNorm1d(width),
+            LeakyReLU(),
+            Dropout(0.5),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = self.block(x)
+        return x + out
+
+
+class BetterLinear(Module):
+    def __init__(self, in_channels: int, out_channels: int) -> None:
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.model = Sequential(
+            Linear(in_channels, out_channels, bias=False),
+            BatchNorm1d(out_channels),
+            LeakyReLU(),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        return self.model(x)
+
+
+class MLP(BaseModel):
+    """Similar to approach of https://arxiv.org/pdf/1705.03098.pdf"""
+
+    def __init__(
+        self,
+        config: Config,
+        in_channels: int,
+        width1: int = 512,
+        width2: int = 256,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(config=config, *args, **kwargs)
+        self.model = Sequential(
+            BetterLinear(in_channels=in_channels, out_channels=width1),
+            MlpBlock(width=width1),
+            BetterLinear(in_channels=width1, out_channels=width2),
+            MlpBlock(width=width2),
+            Linear(width2, self.num_classes, bias=True),
+        )
 
 
 if __name__ == "__main__":
