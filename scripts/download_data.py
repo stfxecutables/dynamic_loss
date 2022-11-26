@@ -61,6 +61,7 @@ def unify(array_like: Any) -> ndarray:
         return array_like
     raise ValueError(f"Unrecognized type: {type(array_like)} ({array_like})")
 
+
 def download() -> None:
     helpers = {
         VisionDataset.MNIST: MNIST,
@@ -69,14 +70,15 @@ def download() -> None:
         VisionDataset.CIFAR100: CIFAR100,
     }
     for vision_dataset, helper in helpers.items():
-        if not vision_dataset.y_train().exists():
+        if not vision_dataset.y_train_path().exists():
             train = helper(DATA, train=True, download=True, transform=unify)
-            np.save(vision_dataset.x_train(), train.data, allow_pickle=False)
-            np.save(vision_dataset.y_train(), train.targets, allow_pickle=False)
-        if not vision_dataset.y_test().exists():
+            np.save(vision_dataset.x_train_path(), train.data, allow_pickle=False)
+            np.save(vision_dataset.y_train_path(), train.targets, allow_pickle=False)
+        if not vision_dataset.y_test_path().exists():
             test = helper(DATA, train=False, download=True, transform=unify)
-            np.save(vision_dataset.x_test(), test.data, allow_pickle=False)
-            np.save(vision_dataset.y_test(), test.targets, allow_pickle=False)
+            np.save(vision_dataset.x_test_path(), test.data, allow_pickle=False)
+            np.save(vision_dataset.y_test_path(), test.targets, allow_pickle=False)
+
 
 def cleanup() -> None:
     leftovers: list[Path] = [
@@ -92,6 +94,7 @@ def cleanup() -> None:
             rmtree(leftover)
         else:
             leftover.unlink()
+
 
 if __name__ == "__main__":
     download()
