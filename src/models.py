@@ -130,6 +130,7 @@ class BaseModel(LightningModule):
         sched = LinearWarmupCosineAnnealingLR(
             optimizer=opt,
             warmup_epochs=warmup,
+            warmup_start_lr=1e-5,
             max_epochs=self.config.max_epochs,
             eta_min=1e-9,
         )

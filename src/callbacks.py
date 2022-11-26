@@ -18,7 +18,8 @@ from pytorch_lightning.callbacks import (
 
 def callbacks(log_version_dir: Path) -> list[Callback]:
     return [
-        LearningRateMonitor(logging_interval="epoch"),
+        # LearningRateMonitor(logging_interval="epoch"),
+        LearningRateMonitor(logging_interval="step"),
         ModelCheckpoint(
             dirpath=log_version_dir / "ckpts",
             filename="epoch={epoch}-val_acc={val/acc:.3f}",
