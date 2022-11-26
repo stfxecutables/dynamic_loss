@@ -25,7 +25,7 @@ CIFAR-10
     30 epochs = ~25 minutes
 
 """
-BATCH_SIZE =
+# BATCH_SIZE =
 
 """
 [General]
