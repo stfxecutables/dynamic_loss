@@ -14,3 +14,25 @@ def ensure_dir(path: Path) -> Path:
 
 
 DATA = ensure_dir(ROOT / "data")
+LOG_ROOT_DIR = ensure_dir(ROOT / "logs")
+
+VAL_SIZE = 0.2
+
+"""
+[General]
+Dataset = MNIST
+ValidationProportion = 0.2
+
+
+[Ensemble]
+Type = stacked
+NumBaseLearners = 3
+UseDynamicLoss = True
+DynamicLossThreshold = 0.7
+
+
+[GA]
+GAGenerations = 300
+GAPopulation = 200
+
+"""

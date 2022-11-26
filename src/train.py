@@ -55,9 +55,8 @@ from typing_extensions import Literal
 
 from src.callbacks import callbacks
 from src.config import Config
-from src.enumerables import SegmentationModel
-from src.loaders import SegmentationLoaders, SegmentationValDataset
-from src.models import DeepLabV3, HRNet, UNet2d
+from src.loaders import vision_loaders
+from src.models import WideResNet, WideResNet16_8, WideResNet28_10
 
 
 def setup_logging(
@@ -88,22 +87,16 @@ def setup_logging(
     return logger, log_version_dir, uuid
 
 
-def get_model(config: Config, val_dataset: SegmentationValDataset) -> Union[UNet2d, HRNet, DeepLabV3]:
-    return {
-        SegmentationModel.DeepLabV3: DeepLabV3,
-        SegmentationModel.UNet: UNet2d,
-        SegmentationModel.HighResNet: HRNet,
-    }[config.model](config, val_dataset)
-
+def get_model(config: Config) -> LightningModule:
+    return WideResNet16_8(config)
 
 if __name__ == "__main__":
     filterwarnings("ignore", message=".*does not have many workers.*")
 
     config, remain = Config.from_args()
     logger, log_version_dir, uuid = setup_logging(config)
-    loaders = SegmentationLoaders(config=config)
-    train, val = loaders.create_loaders()
-    model = get_model(config, val.dataset)
+    train, val, test = vision_loaders(config=config)
+    model = get_model(config)
     parser = ArgumentParser()
     Trainer.add_argparse_args(parser)
     trainer: Trainer = Trainer.from_argparse_args(

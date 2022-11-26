@@ -47,7 +47,15 @@ from pytorch_lightning.callbacks import (
 )
 from torch import Tensor
 from torch.autograd import Variable
-from torch.nn import BatchNorm1d, Dropout, LeakyReLU, Linear, Module, Sequential
+from torch.nn import (
+    BatchNorm1d,
+    CrossEntropyLoss,
+    Dropout,
+    LeakyReLU,
+    Linear,
+    Module,
+    Sequential,
+)
 from torch.optim import Adam, AdamW
 from torch.optim.lr_scheduler import _LRScheduler
 from torch.optim.optimizer import Optimizer
@@ -75,6 +83,7 @@ class BaseModel(LightningModule):
         self.train_metrics = Metrics(self.config, Phase.Train)
         self.val_metrics = Metrics(self.config, Phase.Val)
         self.test_metrics = Metrics(self.config, Phase.Test)
+        self.loss = CrossEntropyLoss()
 
     @no_type_check
     def forward(self, x: Tensor) -> Tensor:

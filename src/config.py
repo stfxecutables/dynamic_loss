@@ -7,27 +7,35 @@ ROOT = Path(__file__).resolve().parent.parent  # isort: skip
 sys.path.append(str(ROOT))  # isort: skip
 # fmt: on
 
-
+import json
 from argparse import ArgumentParser
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any
 
-from src.enumerables import Experiment, FusionMethod, TrainingSubset, VisionDataset
+from src.constants import LOG_ROOT_DIR
+from src.enumerables import Experiment, FusionMethod, Loss, TrainingSubset, VisionDataset
 from src.parsing import float_or_none, int_or_none, to_bool
 
 
 @dataclass
 class Config:
+    # Experiment args
     vision_dataset: VisionDataset
     experiment: Experiment
     fusion: FusionMethod
     subset: TrainingSubset
     binary: bool = False
+    loss: Loss = Loss.CrossEntropy
+    num_classes: int = 10
+    # Training args
     augment: bool = True
     max_epochs: int = 30
-    batch_size: int = 32
     lr_init: float = 5e-4
     weight_decay: float = 5e-3
-    num_classes: int = 10
+    # Loader args
+    batch_size: int = 128
+    num_workers: int = 4
 
     @staticmethod
     def from_args(argstr: str | None = None) -> tuple[Config, ArgumentParser]:
@@ -37,7 +45,7 @@ class Config:
         else:
             args, remain = parser.parse_known_args(argstr.split(" "))
         remain.extend(["--max_epochs", str(args.max_epochs)])
-        vision_dataset = args.vision_dataset
+        vision_dataset = args.dataset
         if args.binary:
             num_classes: int = 2
         else:
@@ -49,12 +57,14 @@ class Config:
                 fusion=args.fusion,
                 subset=args.subset,
                 binary=args.binary,
+                loss=args.loss,
                 augment=args.augment,
                 lr_init=args.lr,
                 weight_decay=args.wd,
                 max_epochs=args.max_epochs,
                 batch_size=args.batch_size,
                 num_classes=num_classes,
+                num_workers=args.num_workers,
             ),
             remain,
         )
@@ -87,6 +97,26 @@ class Config:
             help="Whether to solve a binarized (two-class) problem",
         )
         p.add_argument(
+            "--dataset",
+            "--data",
+            type=VisionDataset.parse,
+            help=VisionDataset.choices(),
+            default=VisionDataset.CIFAR10,
+        )
+        p.add_argument(
+            "--loss",
+            type=Loss.parse,
+            help=Loss.choices(),
+            default=Loss.CrossEntropy,
+        )
+        p.add_argument(
+            "--augment",
+            "--augmentation",
+            type=to_bool,
+            help="Whether or not to use full augmentation",
+            default=True,
+        )
+        p.add_argument(
             "--lr",
             "--lr_init",
             type=float_or_none,
@@ -103,46 +133,45 @@ class Config:
         p.add_argument(
             "--max_epochs",
             type=int_or_none,
-            help="Number of epochs. Should be None unless debugging.",
-            default=10,
+            help="Number of epochs.",
+            default=30,
         )
         p.add_argument(
             "--batch_size",
             type=int_or_none,
-            help="Batch size. Default 32.",
-            default=32,
+            help="Batch size. Default 128.",
+            default=128,
         )
         p.add_argument(
-            "--augment",
-            "--augmentation",
-            type=to_bool,
-            help="Whether or not to use full augmentation",
-            default=True,
+            "--num_workers",
+            type=int_or_none,
+            help="Number of workers for dataloading.  Default 4.",
+            default=4,
         )
         return p
 
     def log_base_dir(self) -> Path:
         """Directory is:
-        logs/[model]/[augmentation]/[patch_size]/
+        logs/[experiment]/[subset]/[fusion]/[data]/[binary]/[augment]
         """
-        m = self.model.value
-        a = "none" if self.augment is None else self.augment.value
-        p = f"{self.patch_size}x{self.patch_size}"
-        outdir: Path = LOG_ROOT_DIR / f"{m}/{a}/{p}"
+        e = self.experiment.value
+        s = self.subset.value
+        f = self.fusion.value
+        d = self.vision_dataset.value
+        b = "binary" if self.binary else "all-classes"
+        a = "augmented" if self.augment else "no-augment"
+        outdir: Path = LOG_ROOT_DIR / f"{e}/{s}/{f}/{d}/{b}/{a}"
         outdir.mkdir(parents=True, exist_ok=True)
         return outdir
 
-    def loggable(self) -> Dict[str, Any]:
-        aug = "none" if self.augment is None else self.augment.value
-        max_epochs = self.max_epochs if self.max_epochs is not None else -1
+    def loggable(self) -> dict[str, Any]:
+        a = "augmented" if self.augment else "no-augment"
         return dict(
-            augmentation=aug,
+            augment=a,
             lr_init=self.lr_init,
             wd=self.weight_decay,
-            max_epochs=max_epochs,
-            patch_size=self.patch_size,
+            max_epochs=self.max_epochs,
             batch_size=self.batch_size,
-            norm=0 if self.norm is SegNorm.MinMax else 1,
         )
 
     def to_json(self, log_version_dir: Path) -> None:
@@ -150,14 +179,11 @@ class Config:
         if not logdir.exists():
             raise FileNotFoundError(f"Log version directory {logdir} does not exist.")
         configs = logdir / "configs"
-        configs.mkdir(exist_ok=True)
-        outfile = configs / "exp_config.json"
+        configs.mkdir(exist_ok=True, parents=True)
+        outfile = configs / "config.json"
         with open(outfile, "w") as handle:
             json.dump(self.__dict__, handle, default=str, indent=2)
         print(f"Saved experiment configuration to {outfile}")
-
-    def num_classes(self) -> int:
-        return 1 + len(self.classes)  # need to count background...
 
     def __str__(self) -> str:
         fmt = []

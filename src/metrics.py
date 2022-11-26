@@ -22,7 +22,7 @@ from src.enumerables import Phase
 
 class Metrics:
     def __init__(self, config: Config, phase: Phase) -> None:
-        self.num_classes = config.num_classes()
+        self.num_classes = config.num_classes
         self.phase = phase
         self.metrics = {
             "acc": Accuracy(num_classes=self.num_classes),
@@ -45,7 +45,7 @@ class Metrics:
                 lightning_module.log(
                     metricname,
                     value,
-                    on_step=False,
+                    on_step=name == "acc",
                     on_epoch=True,
                     prog_bar=name == "acc",
                 )
