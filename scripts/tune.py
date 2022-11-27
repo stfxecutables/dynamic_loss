@@ -29,4 +29,7 @@ WD = GRID[INDEX]["wd"]
 if __name__ == "__main__":
     print(f"Evaluating CIFAR-100 with LR={LR}, WD={WD}")
     print(f"Grid search index {INDEX} of {len(GRID)}")
-    evaluate(f"--dataset=cifar-100 --batch_size=1024 --num_workers=1 --lr={LR} --wd={WD}")
+    evaluate(
+        f"--dataset=cifar-100 --batch_size=1024 --num_workers=1 --lr={LR} --wd={WD}",
+        tune=True,
+    )
