@@ -7,7 +7,7 @@
 #SBATCH --mail-type=TIME_LIMIT_90
 #SBATCH --profile=all
 #SBATCH --job-name=tune
-#SBATCH --output="~/scratch/dynamic_loss/slurm_logs/tune__%A_%a_%j.out"
+#SBATCH --output="/scratch/dberger/dynamic_loss/slurm_logs/tune__%A_%a_%j.out"
 #SBATCH --array=0-29
 #SBATCH --time=00-01:00:00
 #SBATCH --nodes=1
