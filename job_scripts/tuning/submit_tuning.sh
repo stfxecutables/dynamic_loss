@@ -7,7 +7,7 @@
 #SBATCH --mail-type=TIME_LIMIT_90
 #SBATCH --profile=all
 #SBATCH --job-name=tune
-#SBATCH --output=tune_%A_%a_%j.out
+#SBATCH --output="$SCRATCH/dynamic_loss/slurm_logs/tune__%A_%a_%j.out"
 #SBATCH --array=0-29
 #SBATCH --time=00-01:00:00
 #SBATCH --nodes=1
@@ -20,7 +20,7 @@ SCRATCH="$(readlink -f "$SCRATCH")"
 PROJECT="$SCRATCH/dynamic_loss"
 RUN_SCRIPT="$PROJECT/run_python.sh"
 
-PY_SCRIPTS="$PROJECT/scripts/tune.py"
-PY_SCRIPT="$(readlink -f "$PY_SCRIPTS/script.py")"
+PY_SCRIPTS="$PROJECT/scripts"
+PY_SCRIPT="$(readlink -f "$PY_SCRIPTS/tune.py")"
 
 bash "$RUN_SCRIPT" "$PY_SCRIPT"
