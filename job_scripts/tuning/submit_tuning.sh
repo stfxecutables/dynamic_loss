@@ -8,8 +8,8 @@
 #SBATCH --profile=all
 #SBATCH --job-name=tune
 #SBATCH --output="/scratch/dberger/dynamic_loss/slurm_logs/tune__%A_%a_%j.out"
-#SBATCH --array=0-29
-#SBATCH --time=00-01:00:00
+#SBATCH --array=0-27
+#SBATCH --time=00-01:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=p100l:1
