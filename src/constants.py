@@ -33,7 +33,9 @@ CIFAR-10
         0 workers = bad
 
 """
-# BATCH_SIZE =
+BATCH_SIZE = 1024
+OPTIMAL_WD = 0.05
+OPTIMAL_LR = 0.01
 
 """
 [General]
