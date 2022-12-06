@@ -64,5 +64,5 @@ if __name__ == "__main__":
 
 
 """
-experiment=base-train --subset=boot --ensemble_idx={g.idx} --fusion=None --dataset={g.data.value} --loss=cross-entropy --augment=True --lr={OPTIMAL_LR} --wd={OPTIMAL_WD} --max_epochs=50 --batch_size=1024 --num_workers=1
+./run_python.sh src/train.py --experiment=base-train --subset=boot --ensemble_idx=0 --dataset=fmnist --loss=cross-entropy --augment=True --max_epochs=50 --batch_size=1024 --num_workers=1
 """

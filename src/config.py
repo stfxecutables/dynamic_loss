@@ -169,7 +169,7 @@ class Config:
         e = self.experiment.value
         s = self.subset.value
         i = self.ensemble_idx
-        f = self.fusion.value
+        f = self.fusion.value if self.fusion is not None else "none"
         d = self.vision_dataset.value
         b = "binary" if self.binary else "all-classes"
         a = "augmented" if self.augment else "no-augment"
