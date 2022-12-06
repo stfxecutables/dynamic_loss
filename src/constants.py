@@ -15,7 +15,9 @@ def ensure_dir(path: Path) -> Path:
 
 DATA = ensure_dir(ROOT / "data")
 LOG_ROOT_DIR = ensure_dir(ROOT / "logs")
+REPRO_DIR = ensure_dir(ROOT / "reproducibility")
 
+N_ENSEMBLES: int = 50
 VAL_SIZE = 0.2
 """
 Batch size of 1024 is viable for WR-16-10

@@ -29,11 +29,11 @@ from torchvision.datasets import CIFAR10, CIFAR100, MNIST, FashionMNIST
 
 from src.augments import Augmenter
 from src.config import Config
-from src.constants import SHUFFLE_SEED, VAL_SIZE
+from src.constants import N_ENSEMBLES, REPRO_DIR, SHUFFLE_SEED, VAL_SIZE
 from src.enumerables import Phase, TrainingSubset, VisionBinaryDataset, VisionDataset
 
 
-def get_shuffle_idxs(n_indices: int, size: int) -> list[ndarray]:
+def get_shuffle_idxs(n_indices: int, size: int) -> ndarray:
     """
     Parameters
     ----------
@@ -43,14 +43,19 @@ def get_shuffle_idxs(n_indices: int, size: int) -> list[ndarray]:
     size: int
         Size of the array to be shuffled.
     """
+    outfile = REPRO_DIR / f"shuffle_idx_{n_indices}x{size}.npy"
+    if outfile.exists():
+        return np.load(outfile, allow_pickle=False, fix_imports=False)
     ss = np.random.SeedSequence(entropy=SHUFFLE_SEED)
     seeds = ss.spawn(n_indices)
     rngs = [np.random.default_rng(seed) for seed in seeds]
-    idxs = [rng.permutation(size) for rng in rngs]
+    idxs = np.staack([rng.permutation(size) for rng in rngs])
+    np.save(outfile, idxs, allow_pickle=False, fix_imports=False)
+    print(f"Saved shuffle indices to {outfile}.")
     return idxs
 
 
-def get_boot_idxs(n_indices: int, size: int) -> list[ndarray]:
+def get_boot_idxs(n_indices: int, size: int) -> ndarray:
     """
     Parameters
     ----------
@@ -60,10 +65,15 @@ def get_boot_idxs(n_indices: int, size: int) -> list[ndarray]:
     size: int
         Size of the bootstrap resample. Should be size of base-training set.
     """
+    outfile = REPRO_DIR / f"boot_idx_{n_indices}x{size}.npy"
+    if outfile.exists():
+        return np.load(outfile, allow_pickle=False, fix_imports=False)
     ss = np.random.SeedSequence(entropy=SHUFFLE_SEED)
     seeds = ss.spawn(n_indices)
     rngs = [np.random.default_rng(seed) for seed in seeds]
-    idxs = [rng.integers(low=0, high=size, size=size) for rng in rngs]
+    idxs = np.stack([rng.integers(low=0, high=size, size=size) for rng in rngs])
+    np.save(outfile, idxs, allow_pickle=False, fix_imports=False)
+    print(f"Saved bootstrap indices to {outfile}.")
     return idxs
 
 
@@ -91,12 +101,41 @@ class NormedDataset(TensorDataset):
         return x, y
 
 
+def to_BCHW(X: ndarray) -> ndarray:
+    # make X.shape be (B, C, H, W) always
+    if X.ndim == 3:
+        X = np.stack([X, X, X], axis=1)
+    else:
+        X = X.transpose(0, 3, 1, 2)
+    return X
+
+
+def get_train_val_splits(
+    X: ndarray, y: ndarray, ensemble_idx: int
+) -> tuple[ndarray, ndarray, ndarray, ndarray]:
+    # select base-learner subset
+    kf = StratifiedKFold(n_splits=50, shuffle=False)
+    idx_train = list(kf.split(y, y))[ensemble_idx][0]
+    X = X[idx_train]
+    y = y[idx_train]
+    idx_boot = get_boot_idxs(n_indices=N_ENSEMBLES, size=X.shape[0])[ensemble_idx]
+    X = X[idx_boot]
+    y = y[idx_boot]
+
+    # split train into train/val
+    X_tr, X_val, y_tr, y_val = train_test_split(
+        X, y, test_size=VAL_SIZE, random_state=SHUFFLE_SEED, shuffle=False
+    )
+    return X_tr, X_val, y_tr, y_val
+
+
 def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
+    """"""
     kind = config.vision_dataset
     binary = config.binary
     subset = config.subset  # TODO
     ensemble_idx = config.ensemble_idx
-    if (ensemble_idx is None) and (subset is TrainingSubset.Bootstrapped):
+    if (ensemble_idx is None) and (subset is TrainingSubset.Boot):
         raise ValueError(
             "Misconfiguration. Bootstrap resamples are only used for training "
             "ensemble base learners."
@@ -107,16 +146,8 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
     X_test = kind.x_train()
     y_test = kind.y_train()
 
-    # make X.shape be (B, C, H, W) always
-    if X.ndim == 3:
-        X = np.stack([X, X, X], axis=1)
-        X_test = np.stack([X_test, X_test, X_test], axis=1)
-    else:
-        X = X.transpose(0, 3, 1, 2)
-        X_test = X_test.transpose(0, 3, 1, 2)
-
-    train_means = np.mean(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
-    train_sds = np.std(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
+    X = to_BCHW(X)
+    X_test = to_BCHW(X_test)
 
     if binary:
         l1, l2 = kind.binary().classes()  # binary labels
@@ -124,9 +155,14 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
         X, y = np.copy(X[idx]), np.copy(y[idx])  # copy defragments
         X_test, y_test = np.copy(X_test[idx]), np.copy(y_test[idx])
 
-    X_tr, X_val, y_tr, y_val = train_test_split(
-        X, y, test_size=VAL_SIZE, random_state=69, shuffle=False
-    )
+    # It probably makes sense to use the full set of training data for statistics,
+    # as the ensemble still collectively trains on most of the training data, and
+    # the unused training data for each base learner is not used in testing or any
+    # where else. So collect stats before train/val splits.
+    train_means = np.mean(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
+    train_sds = np.std(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
+
+    X_tr, X_val, y_tr, y_val = get_train_val_splits(X, y, ensemble_idx=ensemble_idx)
     norm_args = dict(train_means=train_means, train_sds=train_sds)
     return (
         NormedDataset(

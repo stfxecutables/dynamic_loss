@@ -150,8 +150,7 @@ class TrainingSubset(ArgEnum):
     """
 
     Full = "full"
-    Meta = "meta"
-    Bootstrapped = "boot"
+    Boot = "boot"
 
 
 class FusionMethod(ArgEnum):
