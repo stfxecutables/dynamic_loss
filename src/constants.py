@@ -34,6 +34,8 @@ CIFAR-10
         1 workers = ~43sec epoch @1024
         0 workers = bad
 
+Batch size of 1024 also shockingly viable for WR-28-10 @ 128x128, but a single
+epoch now takes ~1min 45sec.
 """
 BATCH_SIZE = 1024
 OPTIMAL_WD = 0.05
