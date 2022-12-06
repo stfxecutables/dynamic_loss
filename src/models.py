@@ -84,6 +84,7 @@ class BaseModel(LightningModule):
         self.val_metrics = Metrics(self.config, Phase.Val)
         self.test_metrics = Metrics(self.config, Phase.Test)
         self.loss = CrossEntropyLoss()
+        self.final_val = False
 
     @no_type_check
     def forward(self, x: Tensor) -> Tensor:
@@ -106,6 +107,39 @@ class BaseModel(LightningModule):
         preds, loss, target = self._shared_step(batch)
         self.val_metrics.log(self, preds, target)
         self.log(f"{Phase.Val.value}/loss", loss, prog_bar=True)
+        if self.final_val:
+            return {
+                "pred": preds.cpu().numpy(),
+                "target": batch[1].cpu().numpy(),
+            }
+
+    @no_type_check
+    def validation_epoch_end(self, outputs: list[dict[str, Tensor]]) -> None:
+        """Save predictions each epoch. We will compare to true values after."""
+        if self.trainer is None:
+            raise RuntimeError(f"LightningModule {self} has empty .trainer property")
+        if not self.final_val:
+            return
+        preds = [output["pred"] for output in outputs]
+        targs = [output["target"] for output in outputs]
+
+        preds = np.concatenate(preds, axis=0)
+        targs = np.concatenate(targs, axis=0)
+        acc = accuracy(
+            torch.from_numpy(preds), torch.from_numpy(targs), num_classes=self.num_classes
+        )
+
+        epoch = int(self.current_epoch)
+        logdir = Path(self.trainer.log_dir)
+        outdir = logdir / "val_preds"
+        if not outdir.exists():
+            outdir.mkdir(exist_ok=True, parents=True)
+        outfile = outdir / f"val_preds_epoch={epoch:03d}.npy"
+        np.save(outfile, preds)
+        outfile = outdir / f"val_labels_epoch={epoch:03d}.npy"
+        np.save(outfile, targs)
+        outfile = outdir / f"val_acc={acc:0.4f}_epoch={epoch:03d}.npy"
+        np.save(outfile, acc)
 
     def predict_step(
         self, batch: Any, batch_idx: int, dataloader_idx: Optional[int] = None

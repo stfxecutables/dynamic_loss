@@ -56,7 +56,7 @@ from typing_extensions import Literal
 from src.callbacks import callbacks
 from src.config import Config
 from src.loaders import vision_loaders
-from src.models import WideResNet, WideResNet16_8, WideResNet28_10
+from src.models import BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
 
 
 def setup_logging(
@@ -87,7 +87,7 @@ def setup_logging(
     return logger, log_version_dir, uuid
 
 
-def get_model(config: Config) -> LightningModule:
+def get_model(config: Config) -> BaseModel:
     return WideResNet16_8(config)
 
 
@@ -99,7 +99,7 @@ def evaluate(argstr: str | None = None, tune: bool = False) -> None:
         config, remain = Config.from_args(argstr)
     logger, log_version_dir, uuid = setup_logging(config, tune=tune)
     train, val, test = vision_loaders(config=config)
-    model = get_model(config)
+    model: BaseModel = get_model(config)
     parser = ArgumentParser()
     Trainer.add_argparse_args(parser)
     trainer: Trainer = Trainer.from_argparse_args(
@@ -111,6 +111,8 @@ def evaluate(argstr: str | None = None, tune: bool = False) -> None:
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
+    model.final_val = True
+    trainer.validate(model, val, ckpt_path="last")
     trainer.test(model, test, ckpt_path="last")
 
 
