@@ -49,6 +49,7 @@ if __name__ == "__main__":
         f"--dataset={g.data.value} "
         "--loss=cross-entropy "
         "--augment=True "
+        "--resize=128 "
         f"--lr={OPTIMAL_LR} "
         f"--wd={OPTIMAL_WD} "
         f"--max_epochs=50 "
