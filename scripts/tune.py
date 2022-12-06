@@ -31,6 +31,6 @@ if __name__ == "__main__":
     print(f"Evaluating CIFAR-100 with LR={LR}, WD={WD}")
     print(f"Grid search index {INDEX} of {len(GRID)}")
     evaluate(
-        f"--dataset=cifar-100 --batch_size=1024 --num_workers=1 --lr={LR} --wd={WD} --max_epochs=50 --resize={RESIZE}",
+        f"--experiment=tune --subset=full --dataset=cifar-100 --loss=cross-entropy --augment=True --batch_size=1024 --max_epochs=50 --num_workers=1 --lr={LR} --wd={WD} --resize={RESIZE}",
         tune=True,
     )

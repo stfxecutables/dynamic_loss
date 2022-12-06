@@ -13,7 +13,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=v100l:1
-#SBATCH --cpus-per-task=4
+#SBATCH --cpus-per-task=2
 #SBATCH --mem=31000M
 
 SCRATCH="$(readlink -f "$SCRATCH")"
