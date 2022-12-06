@@ -23,7 +23,7 @@ class Config:
     # Experiment args
     vision_dataset: VisionDataset
     experiment: Experiment
-    fusion: FusionMethod
+    fusion: FusionMethod | None
     subset: TrainingSubset
     ensemble_idx: int | None
     binary: bool = False
@@ -31,6 +31,7 @@ class Config:
     num_classes: int = 10
     # Training args
     augment: bool = True
+    resize: int | None = None
     max_epochs: int = 30
     lr_init: float = OPTIMAL_LR
     weight_decay: float = OPTIMAL_WD
@@ -61,6 +62,7 @@ class Config:
                 binary=args.binary,
                 loss=args.loss,
                 augment=args.augment,
+                resize=args.resize,
                 lr_init=args.lr,
                 weight_decay=args.wd,
                 max_epochs=args.max_epochs,
@@ -129,6 +131,12 @@ class Config:
             default=True,
         )
         p.add_argument(
+            "--resize",
+            type=int_or_none,
+            help="Image size to use for training and testing.",
+            default=None,
+        )
+        p.add_argument(
             "--lr",
             "--lr_init",
             type=float_or_none,
@@ -173,10 +181,11 @@ class Config:
         d = self.vision_dataset.value
         b = "binary" if self.binary else "all-classes"
         a = "augmented" if self.augment else "no-augment"
+        r = "no-resize" if self.resize is None else f"{self.resize}x{self.resize}"
         if tune:
-            outdir: Path = LOG_ROOT_DIR / f"tune/{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}"
+            outdir: Path = LOG_ROOT_DIR / f"tune/{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}/{r}"
         else:
-            outdir = LOG_ROOT_DIR / f"{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}"
+            outdir = LOG_ROOT_DIR / f"{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}/{r}"
         outdir.mkdir(parents=True, exist_ok=True)
         return outdir
 

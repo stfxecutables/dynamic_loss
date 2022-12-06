@@ -26,6 +26,7 @@ from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 from torchmetrics.functional import accuracy
 from torchvision.datasets import CIFAR10, CIFAR100, MNIST, FashionMNIST
+from torchvision.transforms import Resize
 
 from src.augments import Augmenter
 from src.config import Config
@@ -84,18 +85,24 @@ class NormedDataset(TensorDataset):
         train_means: ndarray,
         train_sds: ndarray,
         augment: bool = False,
+        resize: int | None = None,
     ) -> None:
         super().__init__(*tensors)
         self.augment = augment
+        self.resize = resize
         self.means = train_means
         self.sds = train_sds
         if augment:
             self.augmenter = Augmenter()
+        if self.resize is not None:
+            self.resizer = Resize(self.resize)
 
     def __getitem__(self, index: int) -> tuple[Tensor, Tensor]:
         x, y = super().__getitem__(index)
         if self.augment:
             x = self.augmenter(x)
+        if self.resize is not None:
+            x = self.resizer(x)
         # This follows the order of TA paper
         x = (x - self.means) / self.sds
         return x, y
