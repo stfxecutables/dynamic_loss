@@ -111,7 +111,7 @@ def evaluate(argstr: str | None = None, tune: bool = False) -> None:
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
-    trainer.test(model, test)
+    trainer.test(model, test, ckpt_path="last")
 
 
 if __name__ == "__main__":

@@ -56,7 +56,7 @@ class ArgEnum(Enum):
 
     @classmethod
     def parseN(cls, s: str) -> ArgEnum | None:
-        if s.lower() in ["none", ""]:
+        if s.lower() in ["none", "", " "]:
             return None
         return cls(s.lower())
 

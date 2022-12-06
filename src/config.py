@@ -99,9 +99,9 @@ class Config:
         )
         p.add_argument(
             "--fusion",
-            type=FusionMethod.parse,
-            help=FusionMethod.choices(),
-            default=FusionMethod.Vote,
+            type=FusionMethod.parseN,
+            help=FusionMethod.choicesN(),
+            default=None,
         )
         p.add_argument(
             "--binary",
@@ -174,9 +174,9 @@ class Config:
         b = "binary" if self.binary else "all-classes"
         a = "augmented" if self.augment else "no-augment"
         if tune:
-            outdir: Path = LOG_ROOT_DIR / f"tune/{e}/{s}/idx={i}/{f}/{d}/{b}/{a}"
+            outdir: Path = LOG_ROOT_DIR / f"tune/{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}"
         else:
-            outdir = LOG_ROOT_DIR / f"{e}/{s}/idx={i}/{f}/{d}/{b}/{a}"
+            outdir = LOG_ROOT_DIR / f"{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}"
         outdir.mkdir(parents=True, exist_ok=True)
         return outdir
 
