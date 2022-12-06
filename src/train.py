@@ -88,7 +88,8 @@ def setup_logging(
 
 
 def get_model(config: Config) -> BaseModel:
-    return WideResNet16_8(config)
+    # return WideResNet16_8(config)
+    return WideResNet28_10(config)
 
 
 def evaluate(argstr: str | None = None, tune: bool = False) -> None:
