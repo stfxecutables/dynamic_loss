@@ -145,6 +145,7 @@ class Experiment(ArgEnum):
 
 class TrainingSubset(ArgEnum):
     Full = "full"
+    Meta = "meta"
     Bootstrapped = "boot"
 
 

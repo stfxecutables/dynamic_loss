@@ -19,7 +19,7 @@ from pytorch_lightning.callbacks import (
     LearningRateMonitor,
     ModelCheckpoint,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch import Tensor
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
@@ -29,8 +29,42 @@ from torchvision.datasets import CIFAR10, CIFAR100, MNIST, FashionMNIST
 
 from src.augments import Augmenter
 from src.config import Config
-from src.constants import VAL_SIZE
-from src.enumerables import Phase, VisionBinaryDataset, VisionDataset
+from src.constants import SHUFFLE_SEED, VAL_SIZE
+from src.enumerables import Phase, TrainingSubset, VisionBinaryDataset, VisionDataset
+
+
+def get_shuffle_idxs(n_indices: int, size: int) -> list[ndarray]:
+    """
+    Parameters
+    ----------
+    n_indices: int
+        Number of indices to generate. Should be equal to number of ensembles.
+
+    size: int
+        Size of the array to be shuffled.
+    """
+    ss = np.random.SeedSequence(entropy=SHUFFLE_SEED)
+    seeds = ss.spawn(n_indices)
+    rngs = [np.random.default_rng(seed) for seed in seeds]
+    idxs = [rng.permutation(size) for rng in rngs]
+    return idxs
+
+
+def get_boot_idxs(n_indices: int, size: int) -> list[ndarray]:
+    """
+    Parameters
+    ----------
+    n_indices: int
+        Number of indices to generate. Should be equal to number of ensembles.
+
+    size: int
+        Size of the bootstrap resample. Should be size of base-training set.
+    """
+    ss = np.random.SeedSequence(entropy=SHUFFLE_SEED)
+    seeds = ss.spawn(n_indices)
+    rngs = [np.random.default_rng(seed) for seed in seeds]
+    idxs = [rng.integers(low=0, high=size, size=size) for rng in rngs]
+    return idxs
 
 
 class NormedDataset(TensorDataset):
@@ -61,6 +95,12 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
     kind = config.vision_dataset
     binary = config.binary
     subset = config.subset  # TODO
+    ensemble_idx = config.ensemble_idx
+    if (ensemble_idx is None) and (subset is TrainingSubset.Bootstrapped):
+        raise ValueError(
+            "Misconfiguration. Bootstrap resamples are only used for training "
+            "ensemble base learners."
+        )
 
     X = kind.x_train()
     y = kind.y_train()
@@ -73,6 +113,8 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
     else:
         X = X.transpose(0, 3, 1, 2)
         X_test = X_test.transpose(0, 3, 1, 2)
+    # now X.shape is (B, C, H, N) always
+
     train_means = np.mean(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
     train_sds = np.std(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
 

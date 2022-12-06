@@ -25,6 +25,7 @@ class Config:
     experiment: Experiment
     fusion: FusionMethod
     subset: TrainingSubset
+    ensemble_idx: int | None
     binary: bool = False
     loss: Loss = Loss.CrossEntropy
     num_classes: int = 10
@@ -56,6 +57,7 @@ class Config:
                 experiment=args.experiment,
                 fusion=args.fusion,
                 subset=args.subset,
+                ensemble_idx=args.ensemble_idx,
                 binary=args.binary,
                 loss=args.loss,
                 augment=args.augment,
@@ -81,9 +83,19 @@ class Config:
         )
         p.add_argument(
             "--subset",
+            "--training-subset",
+            "--training_subset",
             type=TrainingSubset.parse,
             help=TrainingSubset.choices(),
             default=TrainingSubset.Full,
+        )
+        p.add_argument(
+            "--ensemble_idx",
+            "--ensemble-idx",
+            "--idx",
+            type=int_or_none,
+            help="Ensemble index for training of ensembles. None for final runs.",
+            default=None,
         )
         p.add_argument(
             "--fusion",
@@ -156,14 +168,15 @@ class Config:
         """
         e = self.experiment.value
         s = self.subset.value
+        i = self.ensemble_idx
         f = self.fusion.value
         d = self.vision_dataset.value
         b = "binary" if self.binary else "all-classes"
         a = "augmented" if self.augment else "no-augment"
         if tune:
-            outdir: Path = LOG_ROOT_DIR / f"tune/{e}/{s}/{f}/{d}/{b}/{a}"
+            outdir: Path = LOG_ROOT_DIR / f"tune/{e}/{s}/idx={i}/{f}/{d}/{b}/{a}"
         else:
-            outdir: Path = LOG_ROOT_DIR / f"{e}/{s}/{f}/{d}/{b}/{a}"
+            outdir = LOG_ROOT_DIR / f"{e}/{s}/idx={i}/{f}/{d}/{b}/{a}"
         outdir.mkdir(parents=True, exist_ok=True)
         return outdir
 
