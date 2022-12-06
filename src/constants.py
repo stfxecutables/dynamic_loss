@@ -37,7 +37,7 @@ CIFAR-10
 """
 BATCH_SIZE = 1024
 OPTIMAL_WD = 0.05
-OPTIMAL_LR = 0.01
+OPTIMAL_LR = 0.1
 BATCH_SIZES = {  # map from resize to batch size, for v100l
     32: 1024,
     128: 1024,  # and still only about a minute per epoch
