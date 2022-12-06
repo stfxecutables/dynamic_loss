@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from src.constants import LOG_ROOT_DIR
+from src.constants import LOG_ROOT_DIR, OPTIMAL_LR, OPTIMAL_WD
 from src.enumerables import Experiment, FusionMethod, Loss, TrainingSubset, VisionDataset
 from src.parsing import float_or_none, int_or_none, to_bool
 
@@ -32,8 +32,8 @@ class Config:
     # Training args
     augment: bool = True
     max_epochs: int = 30
-    lr_init: float = 5e-4
-    weight_decay: float = 5e-3
+    lr_init: float = OPTIMAL_LR
+    weight_decay: float = OPTIMAL_WD
     # Loader args
     batch_size: int = 128
     num_workers: int = 4
@@ -132,15 +132,15 @@ class Config:
             "--lr",
             "--lr_init",
             type=float_or_none,
-            help="Initial learning rate. Default=5e-4.",
-            default=5e-4,
+            help=f"Initial learning rate. Default={OPTIMAL_LR:1.1e}.",
+            default=OPTIMAL_LR,
         )
         p.add_argument(
             "--wd",
             "--weight_decay",
             type=float_or_none,
-            help="Weight decay. Default=5e-3.",
-            default=5e-3,
+            help=f"Weight decay. Default={OPTIMAL_WD:1.1e}.",
+            default=OPTIMAL_WD,
         )
         p.add_argument(
             "--max_epochs",

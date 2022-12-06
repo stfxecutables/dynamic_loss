@@ -138,6 +138,7 @@ class VisionBinaryDataset(Enum):
 
 
 class Experiment(ArgEnum):
+    BaseTrain = "base-train"
     NoEnsemble = "no-ensemble"  # Baseline CNN
     BaseEnsemble = "ensemble"  # E1, E2
     DynamicLoss = "dynamic"  # E3-6

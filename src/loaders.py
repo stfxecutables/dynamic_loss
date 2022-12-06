@@ -161,8 +161,12 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
     # where else. So collect stats before train/val splits.
     train_means = np.mean(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
     train_sds = np.std(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
-
-    X_tr, X_val, y_tr, y_val = get_train_val_splits(X, y, ensemble_idx=ensemble_idx)
+    if ensemble_idx is None:  # subset is TrainingSubset.Full
+        X_tr, X_val, y_tr, y_val = train_test_split(
+            X, y, test_size=VAL_SIZE, random_state=SHUFFLE_SEED, shuffle=False
+        )
+    else:
+        X_tr, X_val, y_tr, y_val = get_train_val_splits(X, y, ensemble_idx=ensemble_idx)
     norm_args = dict(train_means=train_means, train_sds=train_sds)
     return (
         NormedDataset(

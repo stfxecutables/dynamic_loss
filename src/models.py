@@ -139,16 +139,21 @@ class BaseModel(LightningModule):
         preds = np.concatenate(preds, axis=0)
         targs = np.concatenate(targs, axis=0)
         losses = np.ravel(losses)
+        acc = accuracy(
+            torch.from_numpy(preds), torch.from_numpy(targs), num_classes=self.num_classes
+        )
 
         epoch = int(self.current_epoch)
         logdir = Path(self.trainer.log_dir)
         outdir = logdir / "test_preds"
         if not outdir.exists():
             outdir.mkdir(exist_ok=True, parents=True)
-        outfile = outdir / f"test_preds_epoch={epoch:03d}.pt"
+        outfile = outdir / f"test_preds_epoch={epoch:03d}.npy"
         np.save(outfile, preds)
-        outfile = outdir / f"test_labels_epoch={epoch:03d}.pt"
+        outfile = outdir / f"test_labels_epoch={epoch:03d}.npy"
         np.save(outfile, targs)
+        outfile = outdir / f"test_acc={acc:0.4f}_epoch={epoch:03d}.npy"
+        np.save(outfile, acc)
 
     def _shared_step(self, batch: Tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor, Tensor]:
         x, target = batch
