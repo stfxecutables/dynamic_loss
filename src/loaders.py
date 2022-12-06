@@ -107,13 +107,13 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
     X_test = kind.x_train()
     y_test = kind.y_train()
 
+    # make X.shape be (B, C, H, W) always
     if X.ndim == 3:
         X = np.stack([X, X, X], axis=1)
         X_test = np.stack([X_test, X_test, X_test], axis=1)
     else:
         X = X.transpose(0, 3, 1, 2)
         X_test = X_test.transpose(0, 3, 1, 2)
-    # now X.shape is (B, C, H, N) always
 
     train_means = np.mean(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)
     train_sds = np.std(X, axis=(0, 2, 3), keepdims=True)[0].astype(np.float32)

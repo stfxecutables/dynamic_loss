@@ -144,6 +144,11 @@ class Experiment(ArgEnum):
 
 
 class TrainingSubset(ArgEnum):
+    """
+    There is no "super-training" subset to be used for anything. The figure is
+    misleading. Thus, there are only full-training sets, or the bootstrap set.
+    """
+
     Full = "full"
     Meta = "meta"
     Bootstrapped = "boot"
