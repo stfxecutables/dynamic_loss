@@ -38,6 +38,10 @@ CIFAR-10
 BATCH_SIZE = 1024
 OPTIMAL_WD = 0.05
 OPTIMAL_LR = 0.01
+BATCH_SIZES = {  # map from resize to batch size, for v100l
+    32: 1024,
+    128: 1024,  # and still only about a minute per epoch
+}
 
 SHUFFLE_SEED = int.from_bytes(
     b"\xfe\xeb$\xd17~s\xd5\xea\x0ba\xc4\x9d\xb4y\xf9\xf8\x92de\xbb\x0bg\xf5\xb8\xe9\x16\x9aL\x17\x96\x9fk\x94\x14\xf9\xd1\xca\\\t\xa9N\x0f\xa8\t\xdbE\xa0\xb8\x86&\xc8\xb1\xb5\x8d9,h\xd8\x17Q5_\x7f",

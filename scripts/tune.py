@@ -13,23 +13,24 @@ from sklearn.model_selection import ParameterGrid
 
 from src.train import evaluate
 
-ID = os.environ.get("SLURM_ARRAY_TASK_ID")
-if ID is None:
-    print("WARNING: No $SLURM_ARRAY_TASK_ID found. Setting to 0")
-    INDEX: int = 0
-else:
-    INDEX = int(ID)
-
-LRS = [1e-3, 1e-2, 5e-2, 1e-1]
-WDS = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1]
-GRID = list(ParameterGrid(dict(lr=LRS, wd=WDS)))  # 30
-LR = GRID[INDEX]["lr"]
-WD = GRID[INDEX]["wd"]
-
 if __name__ == "__main__":
+    LRS = [1e-3, 1e-2, 5e-2, 1e-1]
+    WDS = [1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 5e-2, 1e-1]
+    GRID = list(ParameterGrid(dict(lr=LRS, wd=WDS, resize=[128])))  # 28
+    print(f"Total number of combinations: {len(GRID)}")
+
+    ID = os.environ.get("SLURM_ARRAY_TASK_ID")
+    if ID is None:
+        sys.exit()
+    else:
+        INDEX = int(ID)
+
+    LR = GRID[INDEX]["lr"]
+    WD = GRID[INDEX]["wd"]
+    RESIZE = GRID[INDEX]["resize"]
     print(f"Evaluating CIFAR-100 with LR={LR}, WD={WD}")
     print(f"Grid search index {INDEX} of {len(GRID)}")
     evaluate(
-        f"--dataset=cifar-100 --batch_size=1024 --num_workers=1 --lr={LR} --wd={WD} --max_epochs=50",
+        f"--dataset=cifar-100 --batch_size=1024 --num_workers=1 --lr={LR} --wd={WD} --max_epochs=50 --resize={RESIZE}",
         tune=True,
     )
