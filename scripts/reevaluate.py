@@ -15,7 +15,7 @@ from src.enumerables import Experiment
 from src.train import reevaluate
 
 LOGS = LOG_ROOT_DIR / Experiment.BaseTrain.value
-CKPTS = LOGS.rglob("last.ckpt")
+CKPTS = sorted(LOGS.rglob("last.ckpt"))
 
 if __name__ == "__main__":
     for ckpt in CKPTS:
