@@ -151,6 +151,7 @@ class Experiment(ArgEnum):
     BaseEnsemble = "ensemble"  # E1, E2
     DynamicLoss = "dynamic"  # E3-6
     SnapshotEnsemble = "snapshot"
+    Debug = "debug"
 
 
 class TrainingSubset(ArgEnum):

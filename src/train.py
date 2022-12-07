@@ -62,7 +62,7 @@ from src.models import BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
 
 
 def setup_logging(
-    config: Config, tune: bool = False
+    config: Config
 ) -> Tuple[TensorBoardLogger, Path, UUID]:
     """Create TensorBoardLogger and ensure directories are present"""
     # see
@@ -74,7 +74,7 @@ def setup_logging(
     short_uuid = urlsafe_b64encode(uuid.bytes).decode("ascii").rstrip("=")[:8]
     unq = f"{date}{short_uuid}"
     logger = TensorBoardLogger(
-        save_dir=config.log_base_dir(tune=tune),
+        save_dir=config.log_base_dir(),
         name=unq,  # change this is if you want subfolders
         version=None,
         log_graph=False,
