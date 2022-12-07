@@ -136,7 +136,7 @@ def get_train_val_splits(
     return X_tr, X_val, y_tr, y_val
 
 
-def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
+def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset, Dataset]:
     """"""
     kind = config.vision_dataset
     binary = config.binary
@@ -162,6 +162,9 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
         X, y = np.copy(X[idx]), np.copy(y[idx])  # copy defragments
         X_test, y_test = np.copy(X_test[idx]), np.copy(y_test[idx])
 
+    X_full = np.copy(X)
+    y_full = np.copy(y)
+
     # It probably makes sense to use the full set of training data for statistics,
     # as the ensemble still collectively trains on most of the training data, and
     # the unused training data for each base learner is not used in testing or any
@@ -181,21 +184,23 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
         ),
         NormedDataset(torch.from_numpy(X_val), torch.from_numpy(y_val), **norm_args),
         NormedDataset(torch.from_numpy(X_test), torch.from_numpy(y_test), **norm_args),
+        NormedDataset(torch.from_numpy(X_full), torch.from_numpy(y_full), **norm_args),
     )
 
 
 def vision_loaders(
     config: Config,
-) -> tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
-    train, val, test = vision_datasets(config)
+) -> tuple[DataLoader, DataLoader, DataLoader, DataLoader, DataLoader]:
+    train, val, test, full = vision_datasets(config)
     shared_args: Mapping = dict(
         batch_size=config.batch_size, num_workers=config.num_workers
     )
     train_loader = DataLoader(train, shuffle=True, **shared_args)
     val_loader = DataLoader(val, shuffle=False, **shared_args)
     test_loader = DataLoader(test, shuffle=False, **shared_args)  # type: ignore
-    final_train_loader = DataLoader(train, shuffle=False, **shared_args)
-    return train_loader, val_loader, test_loader, final_train_loader
+    train_boot_loader = DataLoader(train, shuffle=False, **shared_args)
+    train_full_loader = DataLoader(full, shuffle=False, **shared_args)
+    return train_loader, val_loader, test_loader, train_boot_loader, train_full_loader
 
 
 if __name__ == "__main__":

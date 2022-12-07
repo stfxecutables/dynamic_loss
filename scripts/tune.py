@@ -32,5 +32,4 @@ if __name__ == "__main__":
     print(f"Grid search index {INDEX} of {len(GRID)}")
     evaluate(
         f"--experiment=tune --subset=full --dataset=cifar-100 --loss=cross-entropy --augment=True --batch_size=1024 --max_epochs=50 --num_workers=1 --lr={LR} --wd={WD} --resize={RESIZE}",
-        tune=True,
     )

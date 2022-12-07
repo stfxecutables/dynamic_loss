@@ -8,7 +8,7 @@ sys.path.append(str(ROOT))  # isort: skip
 # fmt: on
 
 import json
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
@@ -170,7 +170,7 @@ class Config:
         )
         return p
 
-    def log_base_dir(self, tune: bool = False) -> Path:
+    def log_base_dir(self) -> Path:
         """Directory is:
         logs/[tune]/[experiment]/[subset]/[fusion]/[data]/[binary]/[augment]
         """
@@ -182,10 +182,7 @@ class Config:
         b = "binary" if self.binary else "all-classes"
         a = "augmented" if self.augment else "no-augment"
         r = "no-resize" if self.resize is None else f"{self.resize}x{self.resize}"
-        if tune:
-            outdir: Path = LOG_ROOT_DIR / f"tune/{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}/{r}"
-        else:
-            outdir = LOG_ROOT_DIR / f"{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}/{r}"
+        outdir = LOG_ROOT_DIR / f"{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}/{r}"
         outdir.mkdir(parents=True, exist_ok=True)
         return outdir
 
@@ -209,6 +206,38 @@ class Config:
         with open(outfile, "w") as handle:
             json.dump(self.__dict__, handle, default=str, indent=2)
         print(f"Saved experiment configuration to {outfile}")
+
+    @staticmethod
+    def from_json(log_version_dir: Path) -> Config:
+        def eval_(o: Any) -> Any:
+            if o is None:
+                return None
+            return eval(o)
+
+        logdir = log_version_dir.resolve()
+        if not logdir.exists():
+            raise FileNotFoundError(f"Log version directory {logdir} does not exist.")
+        configs = logdir / "configs"
+        jsonfile = configs / "config.json"
+        with open(jsonfile, "r") as handle:
+            config = Namespace(**json.load(handle))
+        return Config(
+            vision_dataset=eval_(config.vision_dataset),
+            experiment=eval_(config.experiment),
+            fusion=eval_(config.fusion),
+            subset=eval_(config.subset),
+            ensemble_idx=int(config.ensemble_idx),
+            binary=bool(config.binary),
+            loss=eval_(config.loss),
+            augment=bool(config.augment),
+            resize=int(config.resize),
+            lr_init=float(config.lr_init),
+            weight_decay=float(config.weight_decay),
+            max_epochs=int(config.max_epochs),
+            batch_size=int(config.batch_size),
+            num_classes=int(config.num_classes),
+            num_workers=int(config.num_workers),
+        )
 
     def __str__(self) -> str:
         fmt = []

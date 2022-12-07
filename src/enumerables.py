@@ -76,6 +76,12 @@ class Phase(ArgEnum):
     Test = "test"
 
 
+class FinalEvalPhase(ArgEnum):
+    Val = "val"
+    FullTrain = "train_full"
+    BootTrain = "train_boot"
+
+
 class VisionDataset(ArgEnum):
     MNIST = "mnist"
     FashionMNIST = "fmnist"

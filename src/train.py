@@ -56,6 +56,7 @@ from typing_extensions import Literal
 
 from src.callbacks import callbacks
 from src.config import Config
+from src.enumerables import FinalEvalPhase
 from src.loaders import vision_loaders
 from src.models import BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
 
@@ -88,19 +89,19 @@ def setup_logging(
     return logger, log_version_dir, uuid
 
 
-def get_model(config: Config) -> BaseModel:
-    return WideResNet16_8(config)
+def get_model(config: Config, log_version_dir: Path) -> BaseModel:
+    return WideResNet16_8(config, log_version_dir=log_version_dir)
 
 
-def evaluate(argstr: str | None = None, tune: bool = False) -> None:
+def evaluate(argstr: str | None = None) -> None:
     filterwarnings("ignore", message=".*does not have many workers.*")
     if argstr is None:
         config, remain = Config.from_args()
     else:
         config, remain = Config.from_args(argstr)
-    logger, log_version_dir, uuid = setup_logging(config, tune=tune)
-    train, val, test, final_train = vision_loaders(config=config)
-    model: BaseModel = get_model(config)
+    logger, log_version_dir, uuid = setup_logging(config)
+    train, val, test, train_boot, train_full = vision_loaders(config=config)
+    model: BaseModel = get_model(config, log_version_dir=log_version_dir)
     parser = ArgumentParser()
     Trainer.add_argparse_args(parser)
     trainer: Trainer = Trainer.from_argparse_args(
@@ -112,12 +113,40 @@ def evaluate(argstr: str | None = None, tune: bool = False) -> None:
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
-    model.final_train = True
-    trainer.validate(model, final_train, ckpt_path="last")
-    model.final_train = False
-    model.final_val = True
+    model.final_eval = FinalEvalPhase.BootTrain
+    trainer.validate(model, train_boot, ckpt_path="last")
+    model.final_eval = FinalEvalPhase.FullTrain
+    trainer.validate(model, train_full, ckpt_path="last")
+    model.final_eval = FinalEvalPhase.Val
     trainer.validate(model, val, ckpt_path="last")
     trainer.test(model, test, ckpt_path="last")
+
+
+def reevaluate(ckpt: Path) -> None:
+    filterwarnings("ignore", message=".*does not have many workers.*")
+    log_version_dir = ckpt.parent.parent
+    config = Config.from_json(log_version_dir)
+
+    train, val, test, train_boot, train_full = vision_loaders(config=config)
+    model: BaseModel = get_model(config, log_version_dir=log_version_dir)
+    model = model.load_from_checkpoint(
+        ckpt, config=config, log_version_dir=log_version_dir
+    )
+    parser = ArgumentParser()
+    Trainer.add_argparse_args(parser)
+    trainer: Trainer = Trainer(
+        devices=1,
+        accelerator="gpu" if torch.cuda.is_available() else "cpu",
+        logger=False,
+        callbacks=None,
+    )
+    model.final_eval = FinalEvalPhase.BootTrain
+    trainer.validate(model, train_boot, ckpt_path=ckpt)
+    model.final_eval = FinalEvalPhase.FullTrain
+    trainer.validate(model, train_full, ckpt_path=ckpt)
+    model.final_eval = FinalEvalPhase.Val
+    trainer.validate(model, val, ckpt_path=ckpt)
+    trainer.test(model, test, ckpt_path=ckpt)
 
 
 if __name__ == "__main__":

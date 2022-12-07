@@ -64,7 +64,7 @@ from torchvision.models.resnet import Bottleneck, ResNet, _ovewrite_named_param,
 from typing_extensions import Literal
 
 from src.config import Config
-from src.enumerables import Phase
+from src.enumerables import FinalEvalPhase, Phase
 from src.metrics import Metrics
 from src.wideresnet import WideResNet
 
@@ -73,6 +73,7 @@ class BaseModel(LightningModule):
     def __init__(
         self,
         config: Config,
+        log_version_dir: Path,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -84,8 +85,8 @@ class BaseModel(LightningModule):
         self.val_metrics = Metrics(self.config, Phase.Val)
         self.test_metrics = Metrics(self.config, Phase.Test)
         self.loss = CrossEntropyLoss()
-        self.final_val = False
-        self.final_train = False
+        self.log_version_dir: Path = log_version_dir
+        self.final_eval: FinalEvalPhase | None = None
 
     @no_type_check
     def forward(self, x: Tensor) -> Tensor:
@@ -106,7 +107,7 @@ class BaseModel(LightningModule):
         self, batch: Tuple[Tensor, Tensor], batch_idx: int, *args, **kwargs
     ) -> Any:
         preds, loss, target = self._shared_step(batch)
-        if self.final_val or self.final_train:
+        if self.final_eval is not None:
             return {
                 "pred": preds.cpu().numpy(),
                 "target": batch[1].cpu().numpy(),
@@ -119,7 +120,7 @@ class BaseModel(LightningModule):
         """Save predictions each epoch. We will compare to true values after."""
         if self.trainer is None:
             raise RuntimeError(f"LightningModule {self} has empty .trainer property")
-        if (not self.final_val) and (not self.final_train):
+        if self.final_eval is None:
             return
         preds = [output["pred"] for output in outputs]
         targs = [output["target"] for output in outputs]
@@ -131,8 +132,8 @@ class BaseModel(LightningModule):
         )
 
         epoch = int(self.current_epoch)
-        logdir = Path(self.trainer.log_dir)
-        phase = "val" if self.final_val else "train"
+        logdir = self.log_version_dir
+        phase = self.final_eval.value
         outdir = logdir / f"{phase}_preds"
         if not outdir.exists():
             outdir.mkdir(exist_ok=True, parents=True)
@@ -173,7 +174,7 @@ class BaseModel(LightningModule):
         )
 
         epoch = int(self.current_epoch)
-        logdir = Path(self.trainer.log_dir)
+        logdir = self.log_version_dir
         outdir = logdir / "test_preds"
         if not outdir.exists():
             outdir.mkdir(exist_ok=True, parents=True)
@@ -211,10 +212,11 @@ class WideResNet16_8(BaseModel):
     def __init__(
         self,
         config: Config,
+        log_version_dir: Path,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        super().__init__(config=config, *args, **kwargs)
+        super().__init__(config=config, log_version_dir=log_version_dir, *args, **kwargs)
         self.depth = 16
         self.k = 8
         self.model = WideResNet(depth=self.depth, k=self.k, num_classes=self.num_classes)
@@ -224,10 +226,11 @@ class WideResNet28_10(BaseModel):
     def __init__(
         self,
         config: Config,
+        log_version_dir: Path,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        super().__init__(config=config, *args, **kwargs)
+        super().__init__(config=config, log_version_dir=log_version_dir, *args, **kwargs)
         self.depth = 28
         self.k = 10
         self.model = WideResNet(depth=self.depth, k=self.k, num_classes=self.num_classes)
@@ -275,13 +278,14 @@ class MLP(BaseModel):
     def __init__(
         self,
         config: Config,
+        log_version_dir: Path,
         in_channels: int,
         width1: int = 512,
         width2: int = 256,
         *args: Any,
         **kwargs: Any,
     ) -> None:
-        super().__init__(config=config, *args, **kwargs)
+        super().__init__(config=config, log_version_dir=log_version_dir, *args, **kwargs)
         self.model = Sequential(
             BetterLinear(in_channels=in_channels, out_channels=width1),
             MlpBlock(width=width1),
