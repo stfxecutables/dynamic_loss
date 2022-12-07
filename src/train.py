@@ -10,6 +10,7 @@ sys.path.append(str(ROOT))  # isort: skip
 
 from argparse import ArgumentParser, Namespace
 from base64 import urlsafe_b64encode
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -98,7 +99,7 @@ def evaluate(argstr: str | None = None, tune: bool = False) -> None:
     else:
         config, remain = Config.from_args(argstr)
     logger, log_version_dir, uuid = setup_logging(config, tune=tune)
-    train, val, test = vision_loaders(config=config)
+    train, val, test, final_train = vision_loaders(config=config)
     model: BaseModel = get_model(config)
     parser = ArgumentParser()
     Trainer.add_argparse_args(parser)
@@ -111,6 +112,9 @@ def evaluate(argstr: str | None = None, tune: bool = False) -> None:
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
+    model.final_train = True
+    trainer.validate(model, final_train, ckpt_path="last")
+    model.final_train = False
     model.final_val = True
     trainer.validate(model, val, ckpt_path="last")
     trainer.test(model, test, ckpt_path="last")

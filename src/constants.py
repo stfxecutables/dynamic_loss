@@ -7,6 +7,8 @@ ROOT = Path(__file__).resolve().parent.parent  # isort: skip
 sys.path.append(str(ROOT))  # isort: skip
 # fmt: on
 
+import os
+
 
 def ensure_dir(path: Path) -> Path:
     path.mkdir(exist_ok=True, parents=True)
@@ -15,6 +17,8 @@ def ensure_dir(path: Path) -> Path:
 
 DATA = ensure_dir(ROOT / "data")
 LOG_ROOT_DIR = ensure_dir(ROOT / "logs")
+CC_LOGS = ensure_dir(ROOT / "cc_logs")
+ON_CCANADA = os.environ.get("CC_CLUSTER") is not None
 REPRO_DIR = ensure_dir(ROOT / "reproducibility")
 
 N_ENSEMBLES: int = 50

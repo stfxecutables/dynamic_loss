@@ -184,7 +184,9 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset]:
     )
 
 
-def vision_loaders(config: Config) -> tuple[DataLoader, DataLoader, DataLoader]:
+def vision_loaders(
+    config: Config,
+) -> tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
     train, val, test = vision_datasets(config)
     shared_args: Mapping = dict(
         batch_size=config.batch_size, num_workers=config.num_workers
@@ -192,7 +194,8 @@ def vision_loaders(config: Config) -> tuple[DataLoader, DataLoader, DataLoader]:
     train_loader = DataLoader(train, shuffle=True, **shared_args)
     val_loader = DataLoader(val, shuffle=False, **shared_args)
     test_loader = DataLoader(test, shuffle=False, **shared_args)  # type: ignore
-    return train_loader, val_loader, test_loader
+    final_train_loader = DataLoader(train, shuffle=False, **shared_args)
+    return train_loader, val_loader, test_loader, final_train_loader
 
 
 if __name__ == "__main__":
