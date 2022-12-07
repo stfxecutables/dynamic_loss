@@ -28,6 +28,7 @@ class Config:
     ensemble_idx: int | None
     binary: bool = False
     loss: Loss = Loss.CrossEntropy
+    loss_threshold: float | None = None
     num_classes: int = 10
     # Training args
     augment: bool = True
@@ -61,6 +62,7 @@ class Config:
                 ensemble_idx=args.ensemble_idx,
                 binary=args.binary,
                 loss=args.loss,
+                loss_threshold=args.loss_threshold,
                 augment=args.augment,
                 resize=args.resize,
                 lr_init=args.lr,
@@ -122,6 +124,13 @@ class Config:
             type=Loss.parse,
             help=Loss.choices(),
             default=Loss.CrossEntropy,
+        )
+        p.add_argument(
+            "--loss_threshold",
+            "--loss-threshold",
+            type=float_or_none,
+            help="Threshold in (0, 1] for dynamic loss",
+            default=None,
         )
         p.add_argument(
             "--augment",
@@ -221,6 +230,11 @@ class Config:
         jsonfile = configs / "config.json"
         with open(jsonfile, "r") as handle:
             config = Namespace(**json.load(handle))
+        # handle potentially missing attributes here...
+        if hasattr(config, "loss_threshold"):
+            threshold = config.loss_threshold
+        else:
+            threshold = None
         return Config(
             vision_dataset=eval_(config.vision_dataset),
             experiment=eval_(config.experiment),
@@ -229,6 +243,7 @@ class Config:
             ensemble_idx=int(config.ensemble_idx),
             binary=bool(config.binary),
             loss=eval_(config.loss),
+            loss_threshold=threshold,
             augment=bool(config.augment),
             resize=int(config.resize),
             lr_init=float(config.lr_init),

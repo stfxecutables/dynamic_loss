@@ -57,7 +57,7 @@ from typing_extensions import Literal
 from src.callbacks import callbacks
 from src.config import Config
 from src.enumerables import FinalEvalPhase
-from src.loaders import vision_loaders
+from src.loaders.loaders import vision_loaders
 from src.models import BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
 
 

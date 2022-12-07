@@ -77,9 +77,10 @@ class Phase(ArgEnum):
 
 
 class FinalEvalPhase(ArgEnum):
-    Val = "val"
     FullTrain = "train_full"
     BootTrain = "train_boot"
+    Val = "val"
+    Test = "test"
 
 
 class VisionDataset(ArgEnum):

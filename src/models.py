@@ -64,7 +64,8 @@ from torchvision.models.resnet import Bottleneck, ResNet, _ovewrite_named_param,
 from typing_extensions import Literal
 
 from src.config import Config
-from src.enumerables import FinalEvalPhase, Phase
+from src.dynamic_loss import dynamic_loss
+from src.enumerables import FinalEvalPhase, Loss, Phase
 from src.metrics import Metrics
 from src.wideresnet import WideResNet
 
@@ -84,7 +85,11 @@ class BaseModel(LightningModule):
         self.train_metrics = Metrics(self.config, Phase.Train)
         self.val_metrics = Metrics(self.config, Phase.Val)
         self.test_metrics = Metrics(self.config, Phase.Test)
-        self.loss = CrossEntropyLoss()
+        self.loss = (
+            CrossEntropyLoss()
+            if self.config.loss is Loss.CrossEntropy
+            else dynamic_loss(self.config.loss_threshold)
+        )
         self.log_version_dir: Path = log_version_dir
         self.final_eval: FinalEvalPhase | None = None
 

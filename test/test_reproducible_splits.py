@@ -37,14 +37,12 @@ from typing_extensions import Literal
 
 from src.constants import N_ENSEMBLES
 from src.enumerables import VisionDataset
-from src.loaders import get_train_val_splits, to_BCHW
+from src.loaders.loaders import get_train_val_splits, to_BCHW
 
 OUTDIR = Path(__file__).resolve().parent
 
 
-def create_splits(
-    kind: VisionDataset, ensemble_idx: int
-) -> tuple[ndarray, ndarray]:
+def create_splits(kind: VisionDataset, ensemble_idx: int) -> tuple[ndarray, ndarray]:
     X = kind.x_train()
     y = kind.y_train()
     X = to_BCHW(X)
@@ -56,9 +54,7 @@ def create_splits(
     return y_tr, y_val
 
 
-def load_splits(
-    kind: VisionDataset, ensemble_idx: int
-) -> tuple[ndarray, ndarray]:
+def load_splits(kind: VisionDataset, ensemble_idx: int) -> tuple[ndarray, ndarray]:
     y_tr_out = OUTDIR / f"y_tr_{kind.name}_{ensemble_idx}.npy"
     if y_tr_out.exists():
         y_tr = np.load(OUTDIR / f"y_tr_{kind.name}_{ensemble_idx}.npy")
