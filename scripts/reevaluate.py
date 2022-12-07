@@ -18,5 +18,6 @@ LOGS = LOG_ROOT_DIR / Experiment.BaseTrain.value
 CKPTS = sorted(LOGS.rglob("last.ckpt"))
 
 if __name__ == "__main__":
+    print(f"{len(CKPTS)} checkpoints to re-evaluate")
     for ckpt in CKPTS:
         reevaluate(ckpt)
