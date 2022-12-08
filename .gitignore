@@ -6,7 +6,11 @@ apptainer/build_files/.pyenv
 apptainer/build_files/*.whl
 apptainer/*.sif
 apptainer/dynamic_loss
+
 data/*.npy
+
+reproducibility/*consolidated*.npy
+
 cc_logs
 logs
 paper
