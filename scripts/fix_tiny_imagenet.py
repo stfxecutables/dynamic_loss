@@ -7,52 +7,13 @@ ROOT = Path(__file__).resolve().parent.parent  # isort: skip
 sys.path.append(str(ROOT))  # isort: skip
 # fmt: on
 
-from argparse import ArgumentParser, Namespace
-from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from shutil import copyfile, move, rmtree
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    Union,
-    cast,
-    no_type_check,
-)
+from shutil import copyfile, move
 
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import pytest
-import torch
-from numpy import ndarray
-from pandas import DataFrame, Series
-from pytorch_lightning import LightningModule, Trainer, seed_everything
-from pytorch_lightning.callbacks import (
-    Callback,
-    EarlyStopping,
-    LearningRateMonitor,
-    ModelCheckpoint,
-)
-from torch import Tensor
-from torch.nn import Conv1d, LeakyReLU, Linear, Module, Sequential
-from torch.optim import Adam
-from torch.optim.optimizer import Optimizer
-from torch.utils.data import Dataset
-from torchmetrics.functional import accuracy
-from torchvision.datasets import CIFAR10, CIFAR100, MNIST, FashionMNIST
-from torchvision.transforms import ToTensor
 from tqdm import tqdm
-from typing_extensions import Literal
 
 from src.constants import DATA
-from src.enumerables import VisionBinaryDataset, VisionDataset
 
 TINY = DATA / "tiny_imagenet"
 TINY_ROOT = TINY / "tiny-imagenet-200"
