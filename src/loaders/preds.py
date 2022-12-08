@@ -373,7 +373,8 @@ def ensemble_loaders(
         shuffled=shuffled,
     )
     test_data = EnsembleTest(config=config, pooled_ensembles=pooled_ensembles)
-    train_size = int(len(all_train) * 0.9)
+    # train_size = int(len(all_train) * 0.9)
+    train_size = int(len(all_train) * 0.95)
     val_size = len(all_train) - train_size
     train_data, val_data = random_split(all_train, lengths=(train_size, val_size))
     args = dict(batch_size=config.batch_size, num_workers=config.num_workers)

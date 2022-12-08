@@ -88,6 +88,7 @@ class VisionDataset(ArgEnum):
     FashionMNIST = "fmnist"
     CIFAR10 = "cifar-10"
     CIFAR100 = "cifar-100"
+    TinyImageNet = "tiny-imagenet"
 
     def x_train_path(self) -> Path:
         return DATA / f"{self.value}_x_train.npy"

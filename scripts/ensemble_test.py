@@ -13,7 +13,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from time import strftime
+from time import sleep, strftime
 from typing import (
     Any,
     Callable,
@@ -87,7 +87,9 @@ def ensemble_eval(
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
-    trainer.test(model, test, ckpt_path="last")
+    sleep(2)
+    ckpt = log_version_dir / "ckpts/last.ckpt"
+    trainer.test(model, test, ckpt_path=ckpt)
 
 
 if __name__ == "__main__":
@@ -95,3 +97,9 @@ if __name__ == "__main__":
     # we are getting 0.9775 test acc with
     # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=cifar-100 --max_epochs=100 --batch_size=1024 --lr=3e-3
     # HOLY FUCK
+    # just got 0.9891 acc with
+    # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=cifar-100 --max_epochs=75 --batch_size=1024 --lr=3e-3
+    # CIFAR-10: 0.99088
+    # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=cifar-10 --max_epochs=75 --batch_size=1024 --lr=3e-3
+    # FMNIST: 0.9798
+    # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=fmnist --max_epochs=100 --batch_size=1024 --lr=3e-3
