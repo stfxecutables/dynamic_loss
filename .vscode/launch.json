@@ -20,6 +20,15 @@
       "console": "integratedTerminal",
       "args": ["--experiment=base-train", "--subset=boot", "--ensemble_idx=0",  "--dataset=cifar-10","--max_epochs=2","--limit_train_batches=10", "--limit_val_batches=10"],
       "justMyCode": true
+    },
+    {
+      "name": "Ensemble",
+      "type": "python",
+      "request": "launch",
+      "program": "./scripts/ensemble_test.py",
+      "console": "integratedTerminal",
+      "args": ["--experiment=debug", "--dataset=cifar-10","--max_epochs=10", "--batch_size=1024"],
+      "justMyCode": true
     }
   ]
 }

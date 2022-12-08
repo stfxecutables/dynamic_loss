@@ -24,7 +24,7 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch import Tensor
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
-from torch.utils.data import DataLoader, Dataset, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset, random_split
 from torchmetrics.functional import accuracy
 from torchvision.datasets import CIFAR10, CIFAR100, MNIST, FashionMNIST
 from torchvision.transforms import Resize
@@ -259,7 +259,7 @@ class EnsembleTrain(Dataset):
         else:
             # shape is (E, N, C) to start
             self.X = np.copy(self.preds.transpose(1, 0, 2))  # now (N, E, C)
-            self.y = np.copy(self.targs.transpose(1, 0))  # now (N, E)
+            self.y = np.copy(self.targs[0, :])  # now (N,)
 
     def __getitem__(self, index: int) -> tuple[Tensor, Tensor]:
         """We just want to make a prediction from the raw logits of N_ENSEMBLE
@@ -282,11 +282,12 @@ class EnsembleTrain(Dataset):
             If `self.pooled`, Tensor of shape (1,), which is the value of the true class for
             the sample at `index`.
         """
-        x, y = torch.from_numpy(self.X[index]), torch.from_numpy(self.y[index])
+        x = torch.from_numpy(self.X[index])
+        y = torch.tensor(self.y[index])
         if self.shuffle:
             idx = torch.randperm(x.shape[0])
-            x = x[idx].contiguous()
-        return x, y
+            x = x[idx]
+        return x.ravel().contiguous(), y
 
     def __len__(self) -> int:
         return len(self.y)
@@ -322,7 +323,7 @@ class EnsembleTest(Dataset):
         else:
             # shape is (E, N, C) to start
             self.X = np.copy(self.preds.transpose(1, 0, 2))  # now (N, E, C)
-            self.y = np.copy(self.targs.transpose(1, 0))  # now (N, E)
+            self.y = np.copy(self.targs[0, :])  # now (N,)
 
     def __getitem__(self, index: int) -> tuple[Tensor, Tensor]:
         """We just want to make a prediction from the raw logits of N_ENSEMBLE
@@ -345,18 +346,45 @@ class EnsembleTest(Dataset):
             If `self.pooled`, Tensor of shape (1,), which is the value of the true class for
             the sample at `index`.
         """
-        x, y = torch.from_numpy(self.X[index]), torch.from_numpy(self.y[index])
+        x = torch.from_numpy(self.X[index])
+        y = torch.tensor(self.y[index])
         if self.shuffle:
             idx = torch.randperm(x.shape[0])
-            x = x[idx].contiguous()
-        return x, y
+            x = x[idx]
+        return x.ravel().contiguous(), y
 
     def __len__(self) -> int:
         return len(self.y)
+
+    def pred_shape(self) -> tuple[int, ...]:
+        if self.pooled:
+            return (self.config.num_classes,)
+        else:
+            return (N_ENSEMBLES, self.config.num_classes)
+
+
+def ensemble_loaders(
+    config: Config, pooled_ensembles: bool, shuffled: bool
+) -> tuple[DataLoader, DataLoader, DataLoader, int]:
+    all_train = EnsembleTrain(
+        config,
+        source=FinalEvalPhase.FullTrain,
+        pooled_ensembles=pooled_ensembles,
+        shuffled=shuffled,
+    )
+    test_data = EnsembleTest(config=config, pooled_ensembles=pooled_ensembles)
+    train_size = int(len(all_train) * 0.9)
+    val_size = len(all_train) - train_size
+    train_data, val_data = random_split(all_train, lengths=(train_size, val_size))
+    args = dict(batch_size=config.batch_size, num_workers=config.num_workers)
+    train = DataLoader(train_data, shuffle=True, **args)
+    val = DataLoader(val_data, shuffle=False, **args)
+    test = DataLoader(test_data, shuffle=False, **args)
+    in_channels = int(np.prod(test_data.pred_shape()))
+    return train, val, test, in_channels
 
 
 if __name__ == "__main__":
     for ds in [VisionDataset.CIFAR10, VisionDataset.CIFAR100, VisionDataset.FashionMNIST]:
         for phase in FinalEvalPhase:
             preds, targs, idxs = consolidate_preds(ds, phase=phase)
-            print()
