@@ -9,7 +9,7 @@
 #SBATCH --job-name=reevaluate
 #SBATCH --output="/scratch/dberger/dynamic_loss/slurm_logs/reevaluate__%A_%a_%j.out"
 #SBATCH --array=0-149
-#SBATCH --time=00-00:59:00
+#SBATCH --time=00-00:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=v100l:1

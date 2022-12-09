@@ -104,18 +104,19 @@ def get_boot_samples(
 
 
 def consolidate_preds(
-    dataset: VisionDataset, phase: FinalEvalPhase
+    dataset: VisionDataset, phase: FinalEvalPhase, force: bool = False
 ) -> tuple[ndarray, ndarray, ndarray]:
     args = dict(allow_pickle=False, fix_imports=False)
     predsfile = REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_preds.npy"
     targsfile = REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_targs.npy"
     idxsfile = REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_ensemble_idx.npy"
-    if predsfile.exists() and targsfile.exists() and idxsfile.exists():
-        return (
-            np.load(predsfile, **args),
-            np.load(targsfile, **args),
-            np.load(idxsfile, **args),
-        )
+    if not force:
+        if predsfile.exists() and targsfile.exists() and idxsfile.exists():
+            return (
+                np.load(predsfile, **args),
+                np.load(targsfile, **args),
+                np.load(idxsfile, **args),
+            )
 
     ds = dataset
     is_boot = phase is FinalEvalPhase.BootTrain
@@ -387,5 +388,10 @@ def ensemble_loaders(
 
 if __name__ == "__main__":
     for ds in [VisionDataset.CIFAR10, VisionDataset.CIFAR100, VisionDataset.FashionMNIST]:
-        for phase in FinalEvalPhase:
-            preds, targs, idxs = consolidate_preds(ds, phase=phase)
+        for phase in [
+            # FinalEvalPhase.BootTrain,
+            # FinalEvalPhase.FullTrain,
+            # FinalEvalPhase.Val,
+            FinalEvalPhase.Test,
+        ]:
+            preds, targs, idxs = consolidate_preds(ds, phase=phase, force=True)
