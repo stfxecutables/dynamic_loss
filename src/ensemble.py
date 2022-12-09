@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from scipy.stats import mode
+from sklearn.neighbors import KNeighborsClassifier as KNN
 from xgboost import XGBClassifier
 from xgboost.callback import EvaluationMonitor
 
@@ -72,6 +73,15 @@ def gradboost(dataset: VisionDataset) -> None:
     print(f"Accuracy: {np.mean(y_pred == y_test)}")
 
 
+def knnfit(dataset: VisionDataset) -> None:
+    X_train, y_train, X_test, y_test = ml_data(dataset)
+    knn = KNN(n_neighbors=1, n_jobs=-1)
+    knn.fit(X_train, y_train)
+    y_pred = knn.predict(X_test)
+    print(f"Accuracy: {np.mean(y_pred == y_test)}")
+
+
 if __name__ == "__main__":
     # print_all_classic_results()
-    gradboost(VisionDataset.CIFAR100)
+    # gradboost(VisionDataset.CIFAR100)
+    knnfit(VisionDataset.CIFAR100)
