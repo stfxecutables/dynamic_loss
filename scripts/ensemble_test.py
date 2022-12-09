@@ -56,10 +56,17 @@ from typing_extensions import Literal
 from src.callbacks import callbacks
 from src.config import Config
 from src.dynamic_loss import DynamicThresholder
-from src.enumerables import FinalEvalPhase, Loss
+from src.enumerables import FinalEvalPhase, FusionMethod, Loss
+from src.loaders.ensemble import ensemble_loaders
 from src.loaders.loaders import vision_loaders
-from src.loaders.preds import ensemble_loaders
-from src.models import MLP, BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
+from src.models import (
+    MLP,
+    BaseModel,
+    WeightedAggregator,
+    WideResNet,
+    WideResNet16_8,
+    WideResNet28_10,
+)
 from src.train import get_model, setup_logging
 
 
@@ -75,8 +82,14 @@ def ensemble_eval(
     train, val, test, in_channels = ensemble_loaders(
         config=config, pooled_ensembles=pooled, shuffled=shuffled
     )
-
-    model = MLP(config=config, log_version_dir=log_version_dir, in_channels=in_channels)
+    if config.fusion is FusionMethod.MLP:
+        model = MLP(
+            config=config, log_version_dir=log_version_dir, in_channels=in_channels
+        )
+    elif config.fusion is FusionMethod.Weighted:
+        model = WeightedAggregator(
+            config=config, log_version_dir=log_version_dir, in_channels=in_channels
+        )
     parser = ArgumentParser()
     Trainer.add_argparse_args(parser)
     trainer: Trainer = Trainer.from_argparse_args(
@@ -96,7 +109,7 @@ def ensemble_eval(
         print(f"DynamicThresholder learned scale-factor: {scaling}")
     sleep(2)
     ckpt = log_version_dir / "ckpts/last.ckpt"
-    trainer.test(model, test, ckpt_path=ckpt)
+    trainer.test(model, test, ckpt_path="best")
 
 
 if __name__ == "__main__":

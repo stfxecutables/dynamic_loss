@@ -307,6 +307,22 @@ class MLP(BaseModel):
         )
 
 
+class WeightedAggregator(BaseModel):
+    def __init__(
+        self,
+        config: Config,
+        log_version_dir: Path,
+        in_channels: int,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(config, log_version_dir, *args, **kwargs)
+        self.in_channels = in_channels
+        self.model = Linear(
+            in_features=in_channels, out_features=self.num_classes, bias=True
+        )
+
+
 if __name__ == "__main__":
     wr = wide_resnet16_10()
     print(wr)

@@ -29,6 +29,8 @@ class Config:
     binary: bool = False
     loss: Loss = Loss.CrossEntropy
     loss_threshold: float | None = None
+    pooled: bool = False
+    shuffled: bool = False
     num_classes: int = 10
     # Training args
     augment: bool = True
@@ -49,6 +51,8 @@ class Config:
             args, remain = parser.parse_known_args(argstr.split(" "))
         remain.extend(["--max_epochs", str(args.max_epochs)])
         vision_dataset = args.dataset
+        if args.shuffled and args.pooled:
+            raise ValueError("Cannot both shuffle and pool ensembles.")
         if args.binary:
             num_classes: int = 2
         else:
@@ -63,6 +67,8 @@ class Config:
                 binary=args.binary,
                 loss=args.loss,
                 loss_threshold=args.loss_threshold,
+                pooled=args.pooled,
+                shuffled=args.shuffled,
                 augment=args.augment,
                 resize=args.resize,
                 lr_init=args.lr,
@@ -133,6 +139,16 @@ class Config:
             default=None,
         )
         p.add_argument(
+            "--pooled",
+            action="store_true",
+            help="Whether to pool ensemble raw predictions",
+        )
+        p.add_argument(
+            "--shuffled",
+            action="store_true",
+            help="Whether to shuffle ensemble ordering",
+        )
+        p.add_argument(
             "--augment",
             "--augmentation",
             type=to_bool,
@@ -185,13 +201,24 @@ class Config:
         """
         e = self.experiment.value
         s = self.subset.value
-        i = self.ensemble_idx
+        i = f"/idx_{self.ensemble_idx}" if self.fusion is None else ""
         f = self.fusion.value if self.fusion is not None else "none"
         d = self.vision_dataset.value
         b = "binary" if self.binary else "all-classes"
         a = "augmented" if self.augment else "no-augment"
         r = "no-resize" if self.resize is None else f"{self.resize}x{self.resize}"
-        outdir = LOG_ROOT_DIR / f"{e}/{s}/idx_{i}/{f}/{d}/{b}/{a}/{r}"
+        if (not self.shuffled) and (not self.pooled):
+            p = "/no-shuffle"
+        elif self.shuffled:
+            p = "/shuffled"
+        elif self.pooled:
+            p = "/pooled"
+        else:
+            raise ValueError("Impossible!")
+        if self.fusion is None:
+            p = ""
+
+        outdir = LOG_ROOT_DIR / f"{e}/{s}{i}/{f}{p}/{d}/{b}/{a}/{r}"
         outdir.mkdir(parents=True, exist_ok=True)
         return outdir
 
@@ -199,6 +226,8 @@ class Config:
         a = "augmented" if self.augment else "no-augment"
         return dict(
             augment=a,
+            pooled=self.pooled,
+            shuffled_ensembles=self.shuffled,
             lr_init=self.lr_init,
             wd=self.weight_decay,
             max_epochs=self.max_epochs,

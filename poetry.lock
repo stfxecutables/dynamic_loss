@@ -1183,6 +1183,26 @@ python-versions = ">=3.7"
 test = ["pytest (>=3.0.0)"]
 
 [[package]]
+name = "xgboost"
+version = "1.7.2"
+description = "XGBoost Python Package"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+numpy = "*"
+scipy = "*"
+
+[package.extras]
+dask = ["dask", "distributed", "pandas"]
+datatable = ["datatable"]
+pandas = ["pandas"]
+plotting = ["graphviz", "matplotlib"]
+pyspark = ["cloudpickle", "pyspark", "scikit-learn"]
+scikit-learn = ["scikit-learn"]
+
+[[package]]
 name = "yarl"
 version = "1.8.1"
 description = "Yet another URL library"
@@ -1197,7 +1217,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.10,<3.11"
-content-hash = "f417460e898238dc868e830ed1b1498e24febe8218b27410e8522d0b08bc2d3a"
+content-hash = "d297696d791ee8cb84721bfbf79344789d1025975c51a7ed4ebf80228ffca4da"
 
 [metadata.files]
 absl-py = [
@@ -2339,6 +2359,14 @@ werkzeug = [
 wheel = [
     {file = "wheel-0.38.4-py3-none-any.whl", hash = "sha256:b60533f3f5d530e971d6737ca6d58681ee434818fab630c83a734bb10c083ce8"},
     {file = "wheel-0.38.4.tar.gz", hash = "sha256:965f5259b566725405b05e7cf774052044b1ed30119b5d586b2703aafe8719ac"},
+]
+xgboost = [
+    {file = "xgboost-1.7.2-py3-none-macosx_10_15_x86_64.macosx_11_0_x86_64.macosx_12_0_x86_64.whl", hash = "sha256:011126d470179177486e92c6a52c3f5deb9dd3e07a65eec5df9bf7dd1a70d2d0"},
+    {file = "xgboost-1.7.2-py3-none-macosx_12_0_arm64.whl", hash = "sha256:a3cf6d2e6e56147546a725d8301f06af33b8467179e17b11f63be9a6d7a9ccd3"},
+    {file = "xgboost-1.7.2-py3-none-manylinux2014_aarch64.whl", hash = "sha256:6f192542fbee7f07891a3b78616ef1f87013e22e33836507344a230188db784e"},
+    {file = "xgboost-1.7.2-py3-none-manylinux2014_x86_64.whl", hash = "sha256:51351d0a5e26016c348df23cdb2069a26bf41a9e586a24e552078435a110510a"},
+    {file = "xgboost-1.7.2-py3-none-win_amd64.whl", hash = "sha256:08ca6b3400dfd16f6159b2881f41b7443024339c14c5dbe10bba117af79126ab"},
+    {file = "xgboost-1.7.2.tar.gz", hash = "sha256:f1a749aedb9330afc48007cc78b8bbbbea35ce372f48a2735f9c71bbc7b8dcfb"},
 ]
 yarl = [
     {file = "yarl-1.8.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:abc06b97407868ef38f3d172762f4069323de52f2b70d133d096a48d72215d28"},

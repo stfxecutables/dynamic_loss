@@ -185,7 +185,8 @@ class TrainingSubset(ArgEnum):
 class FusionMethod(ArgEnum):
     Vote = "vote"
     Average = "avg"  # Aggregation
-    GA_Weighted = "ga-weighted"  # Genetic Algorithm weighted
+    Weighted = "weighted"  # Linear
+    GA_Weighted = "genetic"  # Genetic Algorithm weighted
     CNN = "cnn"  # "stacked" CNN
     MLP = "mlp"  # "stacked" MLP
 
