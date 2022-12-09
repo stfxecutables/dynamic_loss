@@ -11,6 +11,7 @@ from pathlib import Path
 from shutil import copyfile, move
 
 import numpy as np
+from PIL import Image
 from tqdm import tqdm
 
 from src.constants import DATA
@@ -29,6 +30,15 @@ ENDS = [TRAIN, VAL, TEST]
 
 VAL_ANNOTATIONS = VAL / "val_annotations.txt"
 VAL_IMAGES = VAL / "images"
+
+X_TRAIN_OUT = DATA / "tiny_x_train.npz"
+Y_TRAIN_OUT = DATA / "tiny_y_train.npz"
+X_TEST_OUT = DATA / "tiny_x_test.npz"
+Y_TEST_OUT = DATA / "tiny_y_test.npz"
+
+# Entire train + val images are 64x64x3 uint8 representable, 110 000 images, so
+# entire dataset can be loaded into memory for just about 10GiB. We do that
+# instead of keeping in worthless .JPEG form which will be unusable on Cedar
 
 
 def move_files() -> None:
@@ -62,9 +72,50 @@ def organize_val_images() -> None:
     ):
         img_start = VAL_IMAGES / img
         img_end = VAL_IMAGES / f"{label}/{img}"
-        copyfile(img_start, img_end)
+        if not img_end.exists():
+            move(img_start, img_end)
+
+
+def to_numpy() -> None:
+    train_paths = sorted((TINY / "train").rglob("*.JPEG"))
+    val_paths = sorted((TINY / "val").rglob("*.JPEG"))
+    all_paths = train_paths + val_paths
+    labels = [p.parent.parent.name for p in all_paths]
+    unq_labels = np.unique(labels).tolist()
+    legend = {lab: i for i, lab in enumerate(unq_labels)}
+
+    X_train, y_train = [], []
+    for path in tqdm(train_paths, desc="Converting train images"):
+        x = np.asarray(Image.open(path), dtype=np.uint8)
+        if x.ndim == 2:
+            x = np.stack([x, x, x], axis=0)
+        else:
+            x = x.transpose(2, 0, 1)
+        y = legend[path.parent.parent.name]
+        X_train.append(x)
+        y_train.append(y)
+    X_test, y_test = [], []
+    for path in tqdm(val_paths, desc="Converting val images"):
+        x = np.asarray(Image.open(path), dtype=np.uint8)
+        if x.ndim == 2:
+            x = np.stack([x, x, x], axis=0)
+        else:
+            x = x.transpose(2, 0, 1)
+        y = legend[path.parent.parent.name]
+        X_test.append(x)
+        y_test.append(y)
+
+    X_train = np.stack(X_train)
+    np.savez_compressed(X_TRAIN_OUT, X_train=X_train)
+    y_train = np.stack(y_train)
+    np.savez_compressed(Y_TRAIN_OUT, y_train=y_train)
+    X_test = np.stack(X_test)
+    np.savez_compressed(X_TEST_OUT, X_test=X_test)
+    y_test = np.stack(y_test)
+    np.savez_compressed(Y_TEST_OUT, y_test=y_test)
 
 
 if __name__ == "__main__":
     move_files()
     organize_val_images()
+    to_numpy()
