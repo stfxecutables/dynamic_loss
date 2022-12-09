@@ -55,7 +55,8 @@ from typing_extensions import Literal
 
 from src.callbacks import callbacks
 from src.config import Config
-from src.enumerables import FinalEvalPhase
+from src.dynamic_loss import DynamicThresholder
+from src.enumerables import FinalEvalPhase, Loss
 from src.loaders.loaders import vision_loaders
 from src.loaders.preds import ensemble_loaders
 from src.models import MLP, BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
@@ -87,6 +88,12 @@ def ensemble_eval(
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
+    if config.loss is Loss.DynamicTrainable:
+        layer: DynamicThresholder = model.thresholder
+        threshold = torch.sigmoid(layer.T).item()
+        scaling = torch.sigmoid(layer.r).item()
+        print(f"DynamicThresholder learned threshold: {threshold}")
+        print(f"DynamicThresholder learned scale-factor: {scaling}")
     sleep(2)
     ckpt = log_version_dir / "ckpts/last.ckpt"
     trainer.test(model, test, ckpt_path=ckpt)
@@ -97,9 +104,13 @@ if __name__ == "__main__":
     # we are getting 0.9775 test acc with
     # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=cifar-100 --max_epochs=100 --batch_size=1024 --lr=3e-3
     # HOLY FUCK
-    # just got 0.9891 acc with
+    # CIFAR-100: 0.9891
     # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=cifar-100 --max_epochs=75 --batch_size=1024 --lr=3e-3
+
     # CIFAR-10: 0.99088
     # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=cifar-10 --max_epochs=75 --batch_size=1024 --lr=3e-3
+    # CIFAR-10: 0.9958
+    # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=cifar-10 --max_epochs=100 --batch_size=1024 --lr=3e-3
+
     # FMNIST: 0.9798
     # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=fmnist --max_epochs=100 --batch_size=1024 --lr=3e-3

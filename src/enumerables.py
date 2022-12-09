@@ -193,3 +193,4 @@ class FusionMethod(ArgEnum):
 class Loss(ArgEnum):
     CrossEntropy = "cross-entropy"
     DynamicLoss = "dynamic"
+    DynamicTrainable = "dynamic-trainable"

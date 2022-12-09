@@ -51,6 +51,7 @@ from torch.nn import (
     BatchNorm1d,
     CrossEntropyLoss,
     Dropout,
+    Identity,
     LeakyReLU,
     Linear,
     Module,
@@ -64,7 +65,7 @@ from torchvision.models.resnet import Bottleneck, ResNet, _ovewrite_named_param,
 from typing_extensions import Literal
 
 from src.config import Config
-from src.dynamic_loss import dynamic_loss
+from src.dynamic_loss import DynamicThresholder, dynamic_loss, thresholded_loss
 from src.enumerables import FinalEvalPhase, Loss, Phase
 from src.metrics import Metrics
 from src.wideresnet import WideResNet
@@ -85,17 +86,23 @@ class BaseModel(LightningModule):
         self.train_metrics = Metrics(self.config, Phase.Train)
         self.val_metrics = Metrics(self.config, Phase.Val)
         self.test_metrics = Metrics(self.config, Phase.Test)
-        self.loss = (
-            CrossEntropyLoss()
-            if self.config.loss is Loss.CrossEntropy
-            else dynamic_loss(self.config.loss_threshold)
-        )
+        self.thresholder = Identity()
+
+        if self.config.loss is Loss.CrossEntropy:
+            self.loss = CrossEntropyLoss()
+        elif self.config.loss is Loss.DynamicLoss:
+            self.loss = dynamic_loss(self.config.loss_threshold)
+        else:
+            self.thresholder = DynamicThresholder()
+            self.loss = thresholded_loss
         self.log_version_dir: Path = log_version_dir
         self.final_eval: FinalEvalPhase | None = None
 
     @no_type_check
     def forward(self, x: Tensor) -> Tensor:
-        return self.model(x)
+        x = self.model(x)
+        x = self.thresholder(x)
+        return x
 
     @no_type_check
     def training_step(

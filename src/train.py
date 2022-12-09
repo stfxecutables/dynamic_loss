@@ -56,14 +56,13 @@ from typing_extensions import Literal
 
 from src.callbacks import callbacks
 from src.config import Config
-from src.enumerables import FinalEvalPhase
+from src.dynamic_loss import DynamicThresholder
+from src.enumerables import FinalEvalPhase, Loss
 from src.loaders.loaders import vision_loaders
 from src.models import BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
 
 
-def setup_logging(
-    config: Config
-) -> Tuple[TensorBoardLogger, Path, UUID]:
+def setup_logging(config: Config) -> Tuple[TensorBoardLogger, Path, UUID]:
     """Create TensorBoardLogger and ensure directories are present"""
     # see
     # https://pytorch-lightning.readthedocs.io/en/latest/extensions/logging.html#logging-hyperparameters # noqa
@@ -113,6 +112,13 @@ def evaluate(argstr: str | None = None) -> None:
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
+    if config.loss is Loss.DynamicLoss:
+        layer: DynamicThresholder = model.thresholder
+        threshold = torch.sigmoid(layer.T).item()
+        scaling = torch.sigmoid(layer.r).item()
+        print(f"DynamicThresholder learned threshold: {threshold}")
+        print(f"DynamicThresholder learned scale-factor: {scaling}")
+
     model.final_eval = FinalEvalPhase.BootTrain
     trainer.validate(model, train_boot, ckpt_path="last")
     model.final_eval = FinalEvalPhase.FullTrain
