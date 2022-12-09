@@ -88,31 +88,47 @@ class VisionDataset(ArgEnum):
     FashionMNIST = "fmnist"
     CIFAR10 = "cifar-10"
     CIFAR100 = "cifar-100"
-    TinyImageNet = "tiny-imagenet"
+    TinyImageNet = "tiny"
 
     def x_train_path(self) -> Path:
-        return DATA / f"{self.value}_x_train.npy"
+        if self is not VisionDataset.TinyImageNet:
+            return DATA / f"{self.value}_x_train.npy"
+        return DATA / "tiny_x_train.npz"
 
     def x_test_path(self) -> Path:
-        return DATA / f"{self.value}_x_test.npy"
+        if self is not VisionDataset.TinyImageNet:
+            return DATA / f"{self.value}_x_test.npy"
+        return DATA / "tiny_x_test.npz"
 
     def y_train_path(self) -> Path:
-        return DATA / f"{self.value}_y_train.npy"
+        if self is not VisionDataset.TinyImageNet:
+            return DATA / f"{self.value}_y_train.npy"
+        return DATA / "tiny_y_train.npz"
 
     def y_test_path(self) -> Path:
-        return DATA / f"{self.value}_y_test.npy"
+        if self is not VisionDataset.TinyImageNet:
+            return DATA / f"{self.value}_y_test.npy"
+        return DATA / "tiny_y_test.npz"
 
     def x_train(self) -> ndarray:
-        return np.load(DATA / f"{self.value}_x_train.npy")
+        if self is not VisionDataset.TinyImageNet:
+            return np.load(DATA / f"{self.value}_x_train.npy")
+        return np.load(self.x_train_path()).get("X_train")
 
     def x_test(self) -> ndarray:
-        return np.load(DATA / f"{self.value}_x_test.npy")
+        if self is not VisionDataset.TinyImageNet:
+            return np.load(DATA / f"{self.value}_x_test.npy")
+        return np.load(self.x_test_path()).get("X_test")
 
     def y_train(self) -> ndarray:
-        return np.load(DATA / f"{self.value}_y_train.npy")
+        if self is not VisionDataset.TinyImageNet:
+            return np.load(DATA / f"{self.value}_y_train.npy")
+        return np.load(self.y_train_path()).get("y_train")
 
     def y_test(self) -> ndarray:
-        return np.load(DATA / f"{self.value}_y_test.npy")
+        if self is not VisionDataset.TinyImageNet:
+            return np.load(DATA / f"{self.value}_y_test.npy")
+        return np.load(self.y_test_path()).get("y_test")
 
     def binary(self) -> VisionBinaryDataset:
         if self is VisionDataset.CIFAR100:
@@ -129,6 +145,7 @@ class VisionDataset(ArgEnum):
             VisionDataset.MNIST: 10,
             VisionDataset.FashionMNIST: 10,
             VisionDataset.CIFAR10: 10,
+            VisionDataset.TinyImageNet: 200,
         }[self]
 
 
