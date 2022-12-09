@@ -114,7 +114,8 @@ class DynamicThresholder(Module):
         # constrain these to [0, 1]
         # r = torch.clamp(self.r, 0.05, 1.0)
         # T = torch.clamp(self.T, 0.5, 1.0)
-        r = torch.abs(self.r)
+        # r = torch.abs(self.r)
+        r = 0.1
         T = torch.abs(self.T)
         scaled = ((r * x) / (T - x)) * self.relu(T - x) + 1e-8
         return scaled

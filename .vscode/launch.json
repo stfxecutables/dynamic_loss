@@ -22,6 +22,15 @@
       "justMyCode": true
     },
     {
+      "name": "Tiny ImageNet",
+      "type": "python",
+      "request": "launch",
+      "program": "./src/train.py",
+      "console": "integratedTerminal",
+      "args": ["--experiment=debug", "--subset=boot", "--ensemble_idx=0",  "--dataset=tiny","--max_epochs=2","--limit_train_batches=10", "--limit_val_batches=10"],
+      "justMyCode": true
+    },
+    {
       "name": "Ensemble",
       "type": "python",
       "request": "launch",

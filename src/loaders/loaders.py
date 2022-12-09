@@ -150,11 +150,12 @@ def vision_datasets(config: Config) -> tuple[Dataset, Dataset, Dataset, Dataset]
 
     X = kind.x_train()
     y = kind.y_train()
-    X_test = kind.x_train()
-    y_test = kind.y_train()
+    X_test = kind.x_test()
+    y_test = kind.y_test()
 
-    X = to_BCHW(X)
-    X_test = to_BCHW(X_test)
+    if kind is not VisionDataset.TinyImageNet:
+        X = to_BCHW(X)
+        X_test = to_BCHW(X_test)
 
     if binary:
         l1, l2 = kind.binary().classes()  # binary labels
