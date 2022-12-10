@@ -8,12 +8,14 @@ sys.path.append(str(ROOT))  # isort: skip
 # fmt: on
 
 
+import traceback
 from argparse import ArgumentParser, Namespace
 from base64 import urlsafe_b64encode
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from shutil import rmtree
 from time import strftime
 from typing import (
     Any,
@@ -62,7 +64,9 @@ from src.loaders.loaders import vision_loaders
 from src.models import BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
 
 
-def setup_logging(config: Config, label: str = "") -> Tuple[TensorBoardLogger, Path, UUID]:
+def setup_logging(
+    config: Config, label: str = ""
+) -> Tuple[TensorBoardLogger, Path, UUID]:
     """Create TensorBoardLogger and ensure directories are present"""
     # see
     # https://pytorch-lightning.readthedocs.io/en/latest/extensions/logging.html#logging-hyperparameters # noqa
@@ -113,7 +117,15 @@ def evaluate(argstr: str | None = None, label: str = "") -> None:
         log_every_n_steps=10,
         callbacks=callbacks(log_version_dir),
     )
-    trainer.fit(model, train, val)
+    try:
+        trainer.fit(model, train, val)
+    except Exception as e:
+        traceback.print_exc()
+        print(f"Got error: {e}")
+        print("Removing leftover logs...")
+        rmtree(log_version_dir.parent)
+        print("Removed leftover logs. Exiting with error code 1...")
+        sys.exit(1)
     # if config.loss is Loss.DynamicLoss:
     #     layer: DynamicThresholder = model.thresholder
     #     threshold = torch.sigmoid(layer.T).item()

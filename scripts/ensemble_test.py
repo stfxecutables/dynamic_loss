@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent  # isort: skip
 sys.path.append(str(ROOT))  # isort: skip
 # fmt: on
 
+import traceback
 from argparse import ArgumentParser, Namespace
 from base64 import urlsafe_b64encode
 from copy import deepcopy
@@ -100,7 +101,15 @@ def ensemble_eval(
         log_every_n_steps=10,
         callbacks=ensemble_callbacks(log_version_dir),
     )
-    trainer.fit(model, train, val)
+    try:
+        trainer.fit(model, train, val)
+    except Exception as e:
+        traceback.print_exc()
+        print(f"Got error: {e}")
+        print("Removing leftover logs...")
+        rmtree(log_version_dir.parent)
+        print("Removed leftover logs. Exiting with error code 1...")
+        sys.exit(1)
     if config.loss in [
         Loss.DynamicTrainable,
         Loss.DynamicFirst,
