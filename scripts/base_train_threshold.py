@@ -41,14 +41,14 @@ if __name__ == "__main__":
         INDEX = int(ID)
 
     g = GRID[INDEX]
-
+    THRESH = 0.7
     args = (
         "--experiment=base-train "
         "--subset=boot "
         f"--ensemble_idx={g.idx} "
         f"--dataset={g.data.value} "
         "--loss=dynamic "
-        "--loss_threshold=0.7 "
+        f"--loss_threshold={THRESH} "
         "--augment=True "
         "--resize=128 "
         f"--lr={OPTIMAL_LR} "
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     )
     print(f"Running with command:")
     print(args)
-    evaluate(argstr=args)
+    evaluate(argstr=args, label=f"threshold_{THRESH:0.2f}")
 
 
 """

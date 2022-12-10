@@ -30,7 +30,7 @@ class Config:
     loss: Loss = Loss.CrossEntropy
     loss_threshold: float | None = None
     soften: bool = False
-    dyn_epoch: int = 0
+    dyn_epoch: int = -1
     pooled: bool = False
     shuffled: bool = False
     num_classes: int = 10
@@ -155,8 +155,9 @@ class Config:
         p.add_argument(
             "--dyn_epoch",
             "--dyn-epoch",
-            type=int_or_none,
+            type=int,
             help="At what epoch to switch to dynamic loss",
+            default=-1,
         )
         p.add_argument(
             "--shuffled",

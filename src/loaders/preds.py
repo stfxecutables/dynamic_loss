@@ -104,12 +104,22 @@ def get_boot_samples(
 
 
 def consolidate_preds(
-    dataset: VisionDataset, phase: FinalEvalPhase, force: bool = False
+    dataset: VisionDataset,
+    phase: FinalEvalPhase,
+    threshold: float | None = None,
+    force: bool = False,
 ) -> tuple[ndarray, ndarray, ndarray]:
     args = dict(allow_pickle=False, fix_imports=False)
-    predsfile = REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_preds.npy"
-    targsfile = REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_targs.npy"
-    idxsfile = REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_ensemble_idx.npy"
+    thresh = "" if threshold is None else f"_thresh={threshold:0.2f}"
+    predsfile = (
+        REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_preds{thresh}.npy"
+    )
+    targsfile = (
+        REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_targs{thresh}.npy"
+    )
+    idxsfile = (
+        REPRO_DIR / f"{dataset.value}_{phase.value}_consolidated_ensemble_idx{thresh}.npy"
+    )
     if not force:
         if predsfile.exists() and targsfile.exists() and idxsfile.exists():
             return (
@@ -123,9 +133,19 @@ def consolidate_preds(
     # we have to handle the bad (augmented) boot predictions
     phase = FinalEvalPhase.FullTrain if is_boot else phase
 
-    configs = sorted(
+    all_configs = sorted(
         filter(lambda p: f"{ds.value}/" in str(p), BOOT_DIR.rglob("config.json"))
     )
+    logdirs = [conf.parent.parent for conf in all_configs]
+    all_config_classes = [Config.from_json(logdir) for logdir in logdirs]
+
+    # filter to relevant config paths
+    configs = []
+    for i in range(len(all_configs)):
+        cfg = all_config_classes[i]
+        if cfg.loss_threshold == threshold:
+            configs.append(all_configs[i])
+
     pred_dirs = [conf.parent.parent / f"{phase.value}_preds" for conf in configs]
     pred_files = [list(path.glob("*preds_epoch*.npy"))[0] for path in pred_dirs]
     targ_files = [list(path.glob("*labels_epoch*.npy"))[0] for path in pred_dirs]

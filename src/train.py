@@ -62,7 +62,7 @@ from src.loaders.loaders import vision_loaders
 from src.models import BaseModel, WideResNet, WideResNet16_8, WideResNet28_10
 
 
-def setup_logging(config: Config) -> Tuple[TensorBoardLogger, Path, UUID]:
+def setup_logging(config: Config, label: str = "") -> Tuple[TensorBoardLogger, Path, UUID]:
     """Create TensorBoardLogger and ensure directories are present"""
     # see
     # https://pytorch-lightning.readthedocs.io/en/latest/extensions/logging.html#logging-hyperparameters # noqa
@@ -71,7 +71,9 @@ def setup_logging(config: Config) -> Tuple[TensorBoardLogger, Path, UUID]:
     short_uuid = uuid.hex[:8]
     date = urlsafe_b64encode(strftime("%d%H%M%S").encode()).decode("ascii").rstrip("=")
     short_uuid = urlsafe_b64encode(uuid.bytes).decode("ascii").rstrip("=")[:8]
-    unq = f"{date}{short_uuid}"
+    if label != "":
+        label = f"{label}__"
+    unq = f"{label}{date}{short_uuid}"
     logger = TensorBoardLogger(
         save_dir=config.log_base_dir(),
         name=unq,  # change this is if you want subfolders
@@ -92,13 +94,13 @@ def get_model(config: Config, log_version_dir: Path) -> BaseModel:
     return WideResNet16_8(config, log_version_dir=log_version_dir)
 
 
-def evaluate(argstr: str | None = None) -> None:
+def evaluate(argstr: str | None = None, label: str = "") -> None:
     filterwarnings("ignore", message=".*does not have many workers.*")
     if argstr is None:
         config, remain = Config.from_args()
     else:
         config, remain = Config.from_args(argstr)
-    logger, log_version_dir, uuid = setup_logging(config)
+    logger, log_version_dir, uuid = setup_logging(config, label=label)
     train, val, test, train_boot, train_full = vision_loaders(config=config)
     model: BaseModel = get_model(config, log_version_dir=log_version_dir)
     parser = ArgumentParser()
