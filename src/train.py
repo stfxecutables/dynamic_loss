@@ -114,12 +114,12 @@ def evaluate(argstr: str | None = None, label: str = "") -> None:
         callbacks=callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
-    if config.loss is Loss.DynamicLoss:
-        layer: DynamicThresholder = model.thresholder
-        threshold = torch.sigmoid(layer.T).item()
-        scaling = torch.sigmoid(layer.r).item()
-        print(f"DynamicThresholder learned threshold: {threshold}")
-        print(f"DynamicThresholder learned scale-factor: {scaling}")
+    # if config.loss is Loss.DynamicLoss:
+    #     layer: DynamicThresholder = model.thresholder
+    #     threshold = torch.sigmoid(layer.T).item()
+    #     scaling = torch.sigmoid(layer.r).item()
+    #     print(f"DynamicThresholder learned threshold: {threshold}")
+    #     print(f"DynamicThresholder learned scale-factor: {scaling}")
 
     model.final_eval = FinalEvalPhase.BootTrain
     trainer.validate(model, train_boot, ckpt_path="last")

@@ -51,7 +51,7 @@ if __name__ == "__main__":
         f"--loss_threshold={THRESH} "
         "--augment=True "
         "--resize=128 "
-        f"--lr={OPTIMAL_LR} "
+        f"--lr={OPTIMAL_LR/10} "
         f"--wd={OPTIMAL_WD} "
         f"--max_epochs=50 "
         "--batch_size=1024 "
