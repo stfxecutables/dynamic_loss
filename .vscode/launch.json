@@ -27,7 +27,7 @@
       "request": "launch",
       "program": "./src/train.py",
       "console": "integratedTerminal",
-      "args": ["--experiment=debug", "--subset=boot", "--ensemble_idx=0",  "--dataset=tiny","--max_epochs=2","--limit_train_batches=10", "--limit_val_batches=10"],
+      "args": ["--experiment=debug", "--subset=full", "--ensemble_idx=0",  "--dataset=tiny","--max_epochs=2","--limit_train_batches=10", "--limit_val_batches=10", "--batch_size=32"],
       "justMyCode": true
     },
     {

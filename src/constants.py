@@ -40,6 +40,8 @@ CIFAR-10
 
 Batch size of 1024 also shockingly viable for WR-28-10 @ 128x128, but a single
 epoch now takes ~1min 45sec.
+
+At batch of 896, on tiny ImageNet, epoch takes 3:30
 """
 BATCH_SIZE = 1024
 OPTIMAL_WD = 0.05

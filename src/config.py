@@ -29,6 +29,8 @@ class Config:
     binary: bool = False
     loss: Loss = Loss.CrossEntropy
     loss_threshold: float | None = None
+    soften: bool = False
+    dyn_epoch: int = 0
     pooled: bool = False
     shuffled: bool = False
     num_classes: int = 10
@@ -67,6 +69,8 @@ class Config:
                 binary=args.binary,
                 loss=args.loss,
                 loss_threshold=args.loss_threshold,
+                soften=args.soften,
+                dyn_epoch=args.dyn_epoch,
                 pooled=args.pooled,
                 shuffled=args.shuffled,
                 augment=args.augment,
@@ -139,9 +143,20 @@ class Config:
             default=None,
         )
         p.add_argument(
+            "--soften",
+            action="store_true",
+            help="Whether to soften the dynamic loss",
+        )
+        p.add_argument(
             "--pooled",
             action="store_true",
             help="Whether to pool ensemble raw predictions",
+        )
+        p.add_argument(
+            "--dyn_epoch",
+            "--dyn-epoch",
+            type=int_or_none,
+            help="At what epoch to switch to dynamic loss",
         )
         p.add_argument(
             "--shuffled",
@@ -228,6 +243,7 @@ class Config:
             augment=a,
             pooled=self.pooled,
             shuffled_ensembles=self.shuffled,
+            soften=self.soften,
             lr_init=self.lr_init,
             wd=self.weight_decay,
             max_epochs=self.max_epochs,

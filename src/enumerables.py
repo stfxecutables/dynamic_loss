@@ -195,3 +195,6 @@ class Loss(ArgEnum):
     CrossEntropy = "cross-entropy"
     DynamicLoss = "dynamic"
     DynamicTrainable = "dynamic-trainable"
+    DynamicFirstTrainable = "dynamic-first-trainable"
+    DynamicFirst = "dynamic-first"
+    SmoothDynamic = "dynamic-smooth"

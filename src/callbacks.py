@@ -39,3 +39,25 @@ def callbacks(log_version_dir: Path) -> list[Callback]:
             # divergence_threshold=-4.0,
         ),
     ]
+
+
+def ensemble_callbacks(log_version_dir: Path) -> list[Callback]:
+    return [
+        ModelCheckpoint(
+            dirpath=log_version_dir / "ckpts",
+            filename="epoch={epoch}-val_acc={val/acc:.3f}",
+            monitor="val/acc",
+            mode="max",
+            auto_insert_metric_name=False,
+            save_last=True,
+            save_top_k=1,
+            save_weights_only=False,
+        ),
+        # EarlyStopping(
+        #     monitor="val/loss",
+        #     patience=10,
+        #     mode="min",
+        #     check_finite=True
+        #     # divergence_threshold=-4.0,
+        # ),
+    ]

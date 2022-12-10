@@ -88,20 +88,43 @@ class BaseModel(LightningModule):
         self.test_metrics = Metrics(self.config, Phase.Test)
         self.thresholder = Identity()
 
+        self.ce_loss = CrossEntropyLoss()
         if self.config.loss is Loss.CrossEntropy:
             self.loss = CrossEntropyLoss()
         elif self.config.loss is Loss.DynamicLoss:
-            self.loss = dynamic_loss(self.config.loss_threshold)
-        else:
+            self.loss = dynamic_loss(
+                self.config.loss_threshold, soften=self.config.soften
+            )
+        elif self.config.loss is Loss.DynamicTrainable:
             self.thresholder = DynamicThresholder()
             self.loss = thresholded_loss
+        elif self.config.loss is Loss.DynamicFirstTrainable:
+            self.thresholder = DynamicThresholder(
+                trainable_threshold=True,
+                trainable_scale_factor=False,
+            )
+            self.loss = CrossEntropyLoss()
+        elif self.config.loss is Loss.DynamicFirst:
+            thresh = self.config.loss_threshold
+            self.thresholder = DynamicThresholder(
+                threshold=thresh,
+                trainable_threshold=False,
+                trainable_scale_factor=False,
+            )
+            self.loss = CrossEntropyLoss()
+        else:
+            raise ValueError()
         self.log_version_dir: Path = log_version_dir
         self.final_eval: FinalEvalPhase | None = None
 
     @no_type_check
     def forward(self, x: Tensor) -> Tensor:
-        x = self.model(x)
-        x = self.thresholder(x)
+        if self.config.loss in [Loss.DynamicFirst, Loss.DynamicFirstTrainable]:
+            x = self.thresholder(x)
+            x = self.model(x)
+        else:
+            x = self.model(x)
+            x = self.thresholder(x)
         return x
 
     @no_type_check
@@ -200,7 +223,10 @@ class BaseModel(LightningModule):
     def _shared_step(self, batch: Tuple[Tensor, Tensor]) -> tuple[Tensor, Tensor, Tensor]:
         x, target = batch
         preds = self(x)  # need pred.shape == (B, n_classes, H, W)
-        loss = self.loss(preds, target)
+        if self.current_epoch < self.config.dyn_epoch:
+            loss = self.ce_loss(preds, target)
+        else:
+            loss = self.loss(preds, target)
         return preds, loss, target
 
     def configure_optimizers(self) -> Tuple[List[Optimizer], List[_LRScheduler]]:

@@ -79,8 +79,7 @@ def organize_val_images() -> None:
 def to_numpy() -> None:
     train_paths = sorted((TINY / "train").rglob("*.JPEG"))
     val_paths = sorted((TINY / "val").rglob("*.JPEG"))
-    all_paths = train_paths + val_paths
-    labels = [p.parent.parent.name for p in all_paths]
+    labels = [p.parent.parent.name for p in train_paths]
     unq_labels = np.unique(labels).tolist()
     legend = {lab: i for i, lab in enumerate(unq_labels)}
 
@@ -101,7 +100,7 @@ def to_numpy() -> None:
             x = np.stack([x, x, x], axis=0)
         else:
             x = x.transpose(2, 0, 1)
-        y = legend[path.parent.parent.name]
+        y = legend[path.parent.name]
         X_test.append(x)
         y_test.append(y)
 

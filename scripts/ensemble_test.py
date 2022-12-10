@@ -53,7 +53,7 @@ from torch.utils.data import DataLoader
 from torchmetrics.functional import accuracy
 from typing_extensions import Literal
 
-from src.callbacks import callbacks
+from src.callbacks import ensemble_callbacks
 from src.config import Config
 from src.dynamic_loss import DynamicThresholder
 from src.enumerables import FinalEvalPhase, FusionMethod, Loss
@@ -98,13 +98,17 @@ def ensemble_eval(
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         logger=logger,
         log_every_n_steps=10,
-        callbacks=callbacks(log_version_dir),
+        callbacks=ensemble_callbacks(log_version_dir),
     )
     trainer.fit(model, train, val)
-    if config.loss is Loss.DynamicTrainable:
+    if config.loss in [
+        Loss.DynamicTrainable,
+        Loss.DynamicFirst,
+        Loss.DynamicFirstTrainable,
+    ]:
         layer: DynamicThresholder = model.thresholder
-        threshold = torch.sigmoid(layer.T).item()
-        scaling = torch.sigmoid(layer.r).item()
+        threshold = layer.T
+        scaling = layer.r
         print(f"DynamicThresholder learned threshold: {threshold}")
         print(f"DynamicThresholder learned scale-factor: {scaling}")
     sleep(2)

@@ -25,7 +25,9 @@ from torch.optim.optimizer import Optimizer
 from torchmetrics.functional import accuracy
 
 
-def dynamic_loss(threshold: float | None) -> Callable[[Tensor, Tensor], Tensor]:
+def dynamic_loss(
+    threshold: float | None, soften: bool = False
+) -> Callable[[Tensor, Tensor], Tensor]:
     """Expects raw linear outputs (e.g. no softmax or sigmoid has
     been applied)
 
@@ -56,7 +58,10 @@ def dynamic_loss(threshold: float | None) -> Callable[[Tensor, Tensor], Tensor]:
         logits = torch.softmax(preds, dim=1)
         ones = torch.ones_like(logits, requires_grad=True)
         shrunk = 0.1 * logits
-        scaled = torch.where(logits > threshold, ones, shrunk)
+        if soften:
+            scaled = torch.where(logits > threshold, torch.pow(logits, 0.1), shrunk)
+        else:
+            scaled = torch.where(logits > threshold, ones, shrunk)
         return nll_loss(torch.log(scaled), target)
 
     return loss
@@ -93,29 +98,43 @@ class DynamicThresholder(Module):
 
     def __init__(
         self,
+        threshold: float = 1.0,
+        scale: float = 0.1,
         trainable_threshold: bool = True,
         trainable_scale_factor: bool = True,
     ) -> None:
         super().__init__()
         self.trainable_threshold = trainable_threshold
         self.trainable_scale = trainable_scale_factor
-        self.r = Parameter(
-            torch.tensor([0.1], dtype=torch.float),
-            requires_grad=self.trainable_scale,
-        )
-        self.T = Parameter(
-            torch.tensor([1.0], dtype=torch.float),
-            requires_grad=self.trainable_threshold,
-        )
+        if trainable_scale_factor:
+            self.r = Parameter(
+                torch.tensor([0.1], dtype=torch.float),
+                requires_grad=True,
+            )
+        else:
+            self.r = scale
+        if trainable_threshold:
+            self.T = Parameter(
+                torch.tensor([threshold], dtype=torch.float),
+                requires_grad=True,
+            )
+        else:
+            self.T = threshold
         self.relu = ReLU(inplace=False)
 
     def forward(self, preds: Tensor) -> Tensor:
-        x = torch.softmax(preds, dim=1)
+        x = torch.softmax(preds, dim=-1)
         # constrain these to [0, 1]
         # r = torch.clamp(self.r, 0.05, 1.0)
         # T = torch.clamp(self.T, 0.5, 1.0)
-        # r = torch.abs(self.r)
-        r = 0.1
-        T = torch.abs(self.T)
+        # r = 0.1
+        if not self.trainable_scale:
+            r = torch.abs(torch.tensor(self.r))
+        else:
+            r = torch.abs(self.r)
+        if not self.trainable_threshold:
+            T = torch.abs(torch.tensor(self.T))
+        else:
+            T = torch.abs(self.T)
         scaled = ((r * x) / (T - x)) * self.relu(T - x) + 1e-8
         return scaled
