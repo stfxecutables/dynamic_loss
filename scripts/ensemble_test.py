@@ -14,6 +14,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from shutil import rmtree
 from time import sleep, strftime
 from typing import (
     Any,
@@ -104,11 +105,17 @@ def ensemble_eval(
     try:
         trainer.fit(model, train, val)
     except Exception as e:
-        traceback.print_exc()
+        info = traceback.format_exc()
+        print(info)
         print(f"Got error: {e}")
         print("Removing leftover logs...")
-        rmtree(log_version_dir.parent)
-        print("Removed leftover logs. Exiting with error code 1...")
+        rmtree(log_version_dir)
+        record = log_version_dir.parent / "errors.txt"
+        with open(record, "w") as handle:
+            handle.write(info)
+        print(
+            f"Removed leftover logs. Error info in {record} Exiting with error code 1..."
+        )
         sys.exit(1)
     if config.loss in [
         Loss.DynamicTrainable,
