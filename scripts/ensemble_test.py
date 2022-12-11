@@ -73,7 +73,10 @@ from src.train import get_model, setup_logging
 
 
 def ensemble_eval(
-    argstr: str | None = None, pooled: bool = False, shuffled: bool = False
+    argstr: str | None = None,
+    threshold: float | None = None,
+    pooled: bool = False,
+    shuffled: bool = False,
 ) -> None:
     filterwarnings("ignore", message=".*does not have many workers.*")
     if argstr is None:
@@ -82,7 +85,7 @@ def ensemble_eval(
         config, remain = Config.from_args(argstr)
     logger, log_version_dir, uuid = setup_logging(config)
     train, val, test, in_channels = ensemble_loaders(
-        config=config, pooled_ensembles=pooled, shuffled=shuffled
+        config=config, pooled_ensembles=pooled, shuffled=shuffled, threshold=threshold
     )
     if config.fusion is FusionMethod.MLP:
         model = MLP(
@@ -133,7 +136,7 @@ def ensemble_eval(
 
 
 if __name__ == "__main__":
-    ensemble_eval()
+    ensemble_eval(threshold=0.7)
     # we are getting 0.9775 test acc with
     # python scripts/ensemble_test.py --experiment=debug --subset=full --dataset=cifar-100 --max_epochs=100 --batch_size=1024 --lr=3e-3
     # HOLY FUCK

@@ -118,6 +118,7 @@ class EnsembleTrain(Dataset):
     def __init__(
         self,
         config: Config,
+        threshold: float | None,
         source: FinalEvalPhase,
         pooled_ensembles: bool,
         shuffled: bool,
@@ -125,6 +126,7 @@ class EnsembleTrain(Dataset):
         super().__init__()
         self.config = config
         self.source = source
+        self.threshold = threshold
         self.pooled = pooled_ensembles
         self.shuffle = shuffled
         if source is FinalEvalPhase.Test or source is FinalEvalPhase.Val:
@@ -144,7 +146,7 @@ class EnsembleTrain(Dataset):
         self.preds: ndarray  # shape (N_ensembles, N_samples_full_train, N_classes)
         self.targs: ndarray  # shape(N_ensembles, N_samples_full_train)
         self.preds, self.targs, self.idxs = consolidate_preds(
-            config.vision_dataset, phase=source
+            config.vision_dataset, phase=source, threshold=threshold
         )
         self.num_classes = self.preds.shape[-1]
         if self.pooled:
@@ -193,11 +195,13 @@ class EnsembleTest(Dataset):
     def __init__(
         self,
         config: Config,
+        threshold: float | None,
         pooled_ensembles: bool,
     ) -> None:
         super().__init__()
         self.config = config
         self.source = FinalEvalPhase.Test
+        self.threshold = threshold
         self.pooled = pooled_ensembles
         self.shuffle = False
         if self.pooled and self.shuffle:
@@ -208,7 +212,7 @@ class EnsembleTest(Dataset):
         self.preds: ndarray  # shape (N_ensembles, N_samples_full_train, N_classes)
         self.targs: ndarray  # shape(N_ensembles, N_samples_full_train)
         self.preds, self.targs, self.idxs = consolidate_preds(
-            config.vision_dataset, phase=self.source
+            config.vision_dataset, phase=self.source, threshold=threshold
         )
         self.num_classes = self.preds.shape[-1]
         if self.pooled:
@@ -260,15 +264,16 @@ class EnsembleTest(Dataset):
 
 
 def ensemble_loaders(
-    config: Config, pooled_ensembles: bool, shuffled: bool
+    config: Config, threshold: float | None, pooled_ensembles: bool, shuffled: bool
 ) -> tuple[DataLoader, DataLoader, DataLoader, int]:
     all_train = EnsembleTrain(
         config,
         source=FinalEvalPhase.FullTrain,
+        threshold=threshold,
         pooled_ensembles=pooled_ensembles,
         shuffled=shuffled,
     )
-    test_data = EnsembleTest(config=config, pooled_ensembles=pooled_ensembles)
+    test_data = EnsembleTest(config=config, threshold=threshold, pooled_ensembles=pooled_ensembles)
     train_size = int(len(all_train) * 0.9)
     # train_size = int(len(all_train) * 0.95)
     val_size = len(all_train) - train_size

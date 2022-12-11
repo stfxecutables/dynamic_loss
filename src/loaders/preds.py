@@ -146,6 +146,9 @@ def consolidate_preds(
         if cfg.loss_threshold == threshold:
             configs.append(all_configs[i])
 
+    if len(configs) != N_ENSEMBLES:
+        raise FileNotFoundError(f"There should be {N_ENSEMBLES} config files. Found {len(configs)}")
+
     pred_dirs = [conf.parent.parent / f"{phase.value}_preds" for conf in configs]
     pred_files = [list(path.glob("*preds_epoch*.npy"))[0] for path in pred_dirs]
     targ_files = [list(path.glob("*labels_epoch*.npy"))[0] for path in pred_dirs]
@@ -187,4 +190,6 @@ if __name__ == "__main__":
             # FinalEvalPhase.Val,
             FinalEvalPhase.Test,
         ]:
-            preds, targs, idxs = consolidate_preds(ds, phase=phase, force=True)
+            preds, targs, idxs = consolidate_preds(
+                ds, phase=phase, threshold=0.7, force=True
+            )
