@@ -168,6 +168,7 @@ class Experiment(ArgEnum):
     NoEnsemble = "no-ensemble"  # Baseline CNN
     BaseEnsemble = "ensemble"  # E1, E2
     DynamicLoss = "dynamic"  # E3-6
+    EnsembleEval = "ensemble-eval"
     SnapshotEnsemble = "snapshot"
     Debug = "debug"
 

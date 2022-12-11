@@ -20,6 +20,7 @@ LOG_ROOT_DIR = ensure_dir(ROOT / "logs")
 CC_LOGS = ensure_dir(ROOT / "cc_logs")
 ON_CCANADA = os.environ.get("CC_CLUSTER") is not None
 REPRO_DIR = ensure_dir(ROOT / "reproducibility")
+RESULTS = ensure_dir(ROOT / "results")
 
 N_ENSEMBLES: int = 50
 VAL_SIZE = 0.2

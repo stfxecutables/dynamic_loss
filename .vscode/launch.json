@@ -36,7 +36,7 @@
       "request": "launch",
       "program": "./scripts/ensemble_test.py",
       "console": "integratedTerminal",
-      "args": ["--experiment=debug", "--dataset=cifar-10","--max_epochs=10", "--batch_size=1024"],
+      "args": ["--experiment=debug", "--dataset=cifar-100","--max_epochs=10", "--batch_size=1024", "--fusion=mlp"],
       "justMyCode": true
     }
   ]

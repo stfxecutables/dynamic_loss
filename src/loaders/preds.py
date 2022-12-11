@@ -147,7 +147,9 @@ def consolidate_preds(
             configs.append(all_configs[i])
 
     if len(configs) != N_ENSEMBLES:
-        raise FileNotFoundError(f"There should be {N_ENSEMBLES} config files. Found {len(configs)}")
+        raise FileNotFoundError(
+            f"There should be {N_ENSEMBLES} config files. Found {len(configs)}"
+        )
 
     pred_dirs = [conf.parent.parent / f"{phase.value}_preds" for conf in configs]
     pred_files = [list(path.glob("*preds_epoch*.npy"))[0] for path in pred_dirs]
@@ -186,10 +188,11 @@ if __name__ == "__main__":
     for ds in [VisionDataset.CIFAR10, VisionDataset.CIFAR100, VisionDataset.FashionMNIST]:
         for phase in [
             # FinalEvalPhase.BootTrain,
-            # FinalEvalPhase.FullTrain,
+            FinalEvalPhase.FullTrain,
             # FinalEvalPhase.Val,
             FinalEvalPhase.Test,
         ]:
-            preds, targs, idxs = consolidate_preds(
-                ds, phase=phase, threshold=0.7, force=True
-            )
+            for threshold in [0.6, 0.7, 0.8, 0.9]:
+                preds, targs, idxs = consolidate_preds(
+                    ds, phase=phase, threshold=threshold, force=True
+                )
