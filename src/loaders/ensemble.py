@@ -149,6 +149,11 @@ class EnsembleTrain(Dataset):
             config.vision_dataset, phase=source, threshold=threshold
         )
         self.num_classes = self.preds.shape[-1]
+
+        nan_ensembles = np.unique(np.where(np.isnan(self.preds))[0]).ravel().tolist()
+        self.preds = np.delete(self.preds, nan_ensembles, axis=0)
+        self.targs = np.delete(self.targs, nan_ensembles, axis=0)
+
         if self.pooled:
             # reshape as in Notes
             length = np.prod(self.preds.shape[:-1])
@@ -215,6 +220,11 @@ class EnsembleTest(Dataset):
             config.vision_dataset, phase=self.source, threshold=threshold
         )
         self.num_classes = self.preds.shape[-1]
+
+        nan_ensembles = np.unique(np.where(np.isnan(self.preds))[0]).ravel().tolist()
+        self.preds = np.delete(self.preds, nan_ensembles, axis=0)
+        self.targs = np.delete(self.targs, nan_ensembles, axis=0)
+
         if self.pooled:
             # reshape as in Notes
             length = np.prod(self.preds.shape[:-1])
@@ -260,7 +270,7 @@ class EnsembleTest(Dataset):
         if self.pooled:
             return (self.config.num_classes,)
         else:
-            return (N_ENSEMBLES, self.config.num_classes)
+            return (self.preds.shape[0], self.config.num_classes)
 
 
 def ensemble_loaders(
@@ -273,7 +283,9 @@ def ensemble_loaders(
         pooled_ensembles=pooled_ensembles,
         shuffled=shuffled,
     )
-    test_data = EnsembleTest(config=config, threshold=threshold, pooled_ensembles=pooled_ensembles)
+    test_data = EnsembleTest(
+        config=config, threshold=threshold, pooled_ensembles=pooled_ensembles
+    )
     train_size = int(len(all_train) * 0.9)
     # train_size = int(len(all_train) * 0.95)
     val_size = len(all_train) - train_size

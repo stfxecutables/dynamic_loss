@@ -301,4 +301,5 @@ def compute_nan_ensemble_accs() -> None:
 
 
 if __name__ == "__main__":
-    compute_all_ensemble_accs()
+    # compute_all_ensemble_accs()
+    compute_nan_ensemble_accs()
