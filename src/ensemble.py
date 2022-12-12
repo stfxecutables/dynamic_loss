@@ -229,6 +229,9 @@ def print_all_ensemble_accs_everything() -> None:
     df = df.drop(columns="shuffled")
 
     df = df.drop(columns="acc_test_l")  # generally same as best, missing for static
+    df = df.rename(columns={"acc_test_b": "acc"})
+    botched_nan_runs = df["acc"] < 0.2
+    df = df.loc[~botched_nan_runs]
 
     print(
         df.sort_values(by=["data", "fusion", "thresh"]).to_markdown(
@@ -238,7 +241,6 @@ def print_all_ensemble_accs_everything() -> None:
     # df["fusion_kind"] = df.fusion.apply(
     #     lambda f: "static" if f in ["Vote", "Average"] else "learned"
     # )
-    df = df.rename(columns={"acc_test_b": "acc"})
 
     print("Threshold test-accuracy correlations")
     corrs = (
@@ -274,9 +276,9 @@ def print_all_ensemble_accs_everything() -> None:
 
 
 if __name__ == "__main__":
-    # print_all_ensemble_accs_everything()
+    print_all_ensemble_accs_everything()
     # print_all_classic_ensemble_accs()
-    summarize_all_classic_ensemble_accs()
+    # summarize_all_classic_ensemble_accs()
     # gradboost(VisionDataset.CIFAR100)
     # knnfit(VisionDataset.CIFAR100)
     # svcfit(VisionDataset.CIFAR100)
