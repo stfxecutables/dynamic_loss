@@ -204,5 +204,5 @@ def plot_losses() -> None:
 
 
 if __name__ == "__main__":
-    # demonstrate_grad_flow()
-    plot_losses()
+    demonstrate_grad_flow()
+    # plot_losses()

@@ -10,8 +10,10 @@ sys.path.append(str(ROOT))  # isort: skip
 from datetime import datetime
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sbn
 import torch
 from pandas import DataFrame
 from scipy.stats import mode
@@ -227,9 +229,35 @@ def print_all_ensemble_accs_everything() -> None:
 
     topk_drops = [c for c in df.columns if "top" in c]
     loss_drops = [c for c in df.columns if "loss" in c]
-    learn_cols = ["lr", "wd", "meta_epochs_l", "meta_epochs_b"]
     val_cols = [c for c in df.columns if "val" in c]
-    df = df.drop(columns=topk_drops + loss_drops + learn_cols + val_cols)
+    df = df.drop(columns=topk_drops + loss_drops + val_cols)
+    print(
+        df.sort_values(by=["fusion", "data", "thresh", "wd"])
+        .drop(
+            columns=["pooled", "shuffled", "meta_epochs_l", "meta_epochs_b", "acc_test_l"]
+        )
+        .to_markdown(index=False, tablefmt="simple")
+    )
+    data = df.sort_values(by=["fusion", "data", "thresh", "wd"]).drop(
+        columns=["pooled", "shuffled", "meta_epochs_l", "meta_epochs_b", "acc_test_l"]
+    )
+    data = data[data.fusion.isin(["MLP", "Weighted"])]
+    data = data[data["acc_test_b"] > 0.2]
+    data.thresh = data.thresh.apply(lambda x: 0 if x < 0 else x)
+    sbn.catplot(
+        data=data,
+        x="wd",
+        y="acc_test_b",
+        row="fusion",
+        col="data",
+        kind="strip",
+        hue="thresh",
+    )
+    plt.show()
+
+    learn_cols = ["lr", "wd", "meta_epochs_l", "meta_epochs_b"]
+    df = df[(df.wd == 0) | (df.fusion.isin(["Average", "Vote"]))]
+    df = df.drop(columns=learn_cols)
 
     pooled = df["pooled"] == True  # these were always worse
     df = df.loc[~pooled, :]
@@ -243,6 +271,7 @@ def print_all_ensemble_accs_everything() -> None:
     df = df.rename(columns={"acc_test_b": "acc"})
     botched_nan_runs = df["acc"] < 0.2
     df = df.loc[~botched_nan_runs]
+
     df["fsort"] = df.fusion.apply(fusion_sorter)
 
     print(

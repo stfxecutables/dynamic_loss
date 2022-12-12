@@ -1,9 +1,178 @@
+# Contents
+
+- [Updated Methods](#updated-methods)
+- [Corrections to Loss Description [IMPORTANT!]](#corrections-to-loss-description-important)
+  - [Issue #1 - Misleading and Unclear Formula](#issue-1---misleading-and-unclear-formula)
+  - [Issue #2 - Incorrect Description of Gradients](#issue-2---incorrect-description-of-gradients)
+  - [Models](#models)
+    - [Base Learners](#base-learners)
+    - [Super Learners](#super-learners)
+    - [Static Aggregation / Fusion Methods](#static-aggregation--fusion-methods)
+  - [Splitting Procedure](#splitting-procedure)
+  - [Training and Evaluation of Base Learners](#training-and-evaluation-of-base-learners)
+- [Results](#results)
+  - [Tables](#tables)
+- [References](#references)
+
+
 ## Updated Methods
 
 New source code is available on GitHub [@dm-bergerStfxecutablesDynamicLoss2022].
 
-We train a WideResNet-16-8 (WR-16-8) [@zagoruykoWideResidualNetworks2017] on CIFAR-10,
-CIFAR-100, and FashionMNIST datasets.
+## Corrections to Loss Description [IMPORTANT!]
+
+There are a number of errors in the current manuscript dynamic loss description.
+
+### Issue #1 - Misleading and Unclear Formula
+
+The previous version of the manuscript defined the dynamic loss $\mathcal{L}_{\text{dyn}}$
+to be, for a classification problem with $c$ classes, and free threshold parameter $T$:
+
+$$
+\mathcal{L}_{\text{dyn}}(\hat{y}, y) = \sum_{i=1}^c \mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i)
+$$
+
+where
+
+$$
+\mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i) =
+\begin{cases}
+y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < T \\
+y_i \cdot \log (1.0) & \hat{y}_i \ge T \\
+\end{cases}
+$$
+
+and where $\hat{y}_i$s are the softmaxed predictions such that $\hat{y}_i \in
+[0, 1]$ and $\sum \hat{y}_i = 1$. This equation is ***missing an important
+negative***, and is misleading / confusing as it is written, since $\log(1.0)$
+is zero, and so we really ought to write that the loss simplfies to:
+
+$$
+\mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i) =
+\begin{cases}
+y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < T \\
+0 & \hat{y}_i \ge T \\
+\end{cases}
+$$
+
+This ends up being important, because, as we shall see, if we define:
+
+$$
+\mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i; \theta) =
+\begin{cases}
+y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < T \\
+\theta & \hat{y}_i \ge T \\
+\end{cases}
+$$
+
+then
+
+$$
+\nabla \mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i; \theta) =
+\nabla \mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i; \theta^{\prime}) \quad \text{for all} \quad  \theta, \theta^{\prime} > 0
+$$
+
+because the derivative of a constant function is zero, regardless of the value
+of the constant. I.e. ***the choice of fill value has no impact on the
+gradients, and since the gradients are all that actually matter for the loss
+function, the choice of fill value is also irrelevant***.
+
+### Issue #2 - Incorrect Description of Gradients
+
+The following description accompanies the original equation (emphasis mine, on
+incorrect parts):
+
+> Any score above this threshold is updated according to equation 1 ($\hat{y}_i > T$),
+> while any value below the threshold is downscaled from its
+> original value according to equation 1 ($\hat{y}_i \le T$). Thus, the ***approach
+> shares some similarities to a leaky rectified linear unit (ReLU) layer*** [...]
+
+In fact, the purpose of the LeakyReLU is to retain (diminished) gradients left
+of zero by replacing the constant mapping to zero with a linear mapping to 0.1
+times the input. **Since the dynamic loss also maps to a constant value, it has
+more in common with the plain ReLU, in that the effect of purpose of the
+dynamic loss thresholding is to _destroy_ gradients**.
+
+> This custom loss function supports the creation of soft-max scores that are
+> more indicative of classifier prediction reliability, thus potentially
+> assisting in making incorrect and uncertain predictions more distinguishable
+> from correct predictions. As an illustrative example, assuming a threshold of
+> 0.7, ***if the soft-max value were above 0.7, and the prediction was correct,
+> the weights would be adjusted very slightly, and if the prediction were
+> incorrect, the weights would be adjusted more severely. In the reverse case,
+> if the soft-max value were below the example threshold of 0.7, and the
+> prediction was correct, the weights would be changed more severely. Finally,
+> if the soft-max value were below 0.7 and the prediction was incorrect, the
+> weights would not be changed substantially, since we would have considered
+> the prediction as unreliable anyway***.
+
+
+
+### Models
+
+#### Base Learners
+
+We train WideResNet-16-8 (WR-16-8) [@zagoruykoWideResidualNetworks2017] base
+learners on CIFAR-10, CIFAR-100, and FashionMNIST datasets.
+
+#### Super Learners
+
+Suppose we have an ensemble of $E$ trained base learners, and the raw
+(un-softmaxed) predictions on $N$ samples for each of these learners, and where
+the dataset has $C$ classes. If there are $N_{\text{train}}$ training samples
+(a subset of which may have been used for training each base learner), and
+$N_{\text{test}}$ testing samples (which were never seen by base-learners),
+then this yields a super training set $\hat{\mathbf{Y}}_{\text{train}} =
+[\hat{\mathbf{y}}^{(1)}_{\text{train}}, \dots,
+\hat{\mathbf{y}}^{(E)}_{\text{train}} ]$, where
+$\hat{\mathbf{y}}^{(i)}_{\text{train}} \in \mathbb{R}^{ N_{\text{train}} \times
+C }$ is the matrix of un-softmaxed predictions for the $N_{\text{train}}$
+training samples of ensemble $i$, and thus $\hat{\mathbf{Y}}_{\text{train}} \in
+\mathbb{R}^{N_{\text{train}} \times C \times E }$. Likewise, there is a
+super-evaluation set $\hat{\mathbf{Y}}_{\text{test}}$ with $N_{\text{test}}$
+samples.
+
+A "super-training sample" $\hat{\mathbf{Y}}_i$ is thus a matrix of predictions
+in $\mathbb{R}^{C \times E}$. This can be flattened into a vector $\mathbf{v}_i$ of length $D
+= C \times E$ and fed into a linear deep learning model $f$ such that $f(\mathbf{v}_i)
+\in \mathbb{R}^C$ is the final class prediction.
+
+We train two super or "meta" learner models, which operate on the raw
+(un-softmaxed) predictions of all base learners.
+
+The "Weighted" model (Tables 1-2) is a simple linear model which is just
+weighted combination of the components of $\mathbf{v}_i$, i.e. $f(\mathbf{v}) =
+\mathbf{A}\cdot\mathbf{v} + \mathbf{b}$. This is equivalent to a
+multilayer-perceptron (MLP) with a single linear layer and no activations (see
+the paper [source code](https://github.com/stfxecutables/dynamic_loss/blob/master/src/models.py#L336-L349)).
+
+The "MLP" model (Tables 1-2) is a modern MLP architecture with 6 hidden layers,
+and which incorporates both batch normalization and dropout layers
+[see @martinezSimpleEffectiveBaseline2017, or the [source code for this
+paper](https://github.com/stfxecutables/dynamic_loss/blob/master/src/models.py#L313-L333)].
+
+Both super-learner models were implemented and trained using PyTorch
+[@paszkePyTorchImperativeStyle2019], and trained with a learning rate of $3
+\times 10^{-4}$ and using the AdamW optimizer
+[@loshchilovDecoupledWeightDecay2019] without weight decay (brief investigation
+showed different weight decays had negligible impacts on final results). The
+simple linear model was trained for 10 epochs, and the MLP for 20 epochs, and
+final performances were evaluated on $\hat{\mathbf{Y}}_{\text{test}}$ using the
+weights from training epoch with the best validation accuracy on a 10% subset
+of $\hat{\mathbf{Y}}_{\text{train}}$ (early stopping).
+
+#### Static Aggregation / Fusion Methods
+
+We also compared the impact of the dynamic loss on two classic model fusion
+methods: voting and averaging ("Vote" and "Average" in Tables 1 and 2,
+respectively). For voting, the ensemble prediction was taken to be the modally-predicted
+class. For averaging, the raw (un-softmaxed) predictions were averaged across ensembles
+to create a single raw average prediction, and these predictions where then softmaxed
+and argmaxed to obtain the final average aggregate predictions.
+Code for these implementations is available
+[here](https://github.com/stfxecutables/dynamic_loss/blob/master/src/ensemble.py#L64-L98).
+
+
 
 ### Splitting Procedure
 
@@ -44,7 +213,7 @@ reaching the initial learning rate, and then decayed to a minimum learning rate
 of $10^{-9}$ via cosine annealing [@loshchilovSGDRStochasticGradient2017].
 
 The initial learning rate and weight decay were found via grid search on
-CIFAR-100 only, over the learning rates $\{0.001, 0.01, 0.05, 0.1}$ and weight
+CIFAR-100 only, over the learning rates $\{0.001, 0.01, 0.05, 0.1\}$ and weight
 decays $\{10^{-4}, 5 \times 10^{-4}, 0.001, 0.005, 0.01, 0.05, 0.1\}$, and
 otherwise using identical training parameters as described above.
 
@@ -66,30 +235,30 @@ models / dataset $\approx$ 24 GPU days.
 
 
 
+## Results
 
 
-## Tables
+### Tables
 
 |          Data | CIFAR10     |          |              |         | CIFAR100    |          |              |         | FashionMNIST |          |              |         |
 |--------------:|-------------|----------|--------------|---------|-------------|----------|--------------|---------|--------------|----------|--------------|---------|
 |    **Fusion** | **Average** | **Vote** | **Weighted** | **MLP** | **Average** | **Vote** | **Weighted** | **MLP** | **Average**  | **Vote** | **Weighted** | **MLP** |
 | **Threshold** |             |          |              |         |             |          |              |         |              |          |              |         |
-|      **None** | 0.8840      | 0.8814   | 0.8729       | 0.9048  | 0.6563      | 0.6588   | 0.6721       | 0.6978  | 0.9374       | 0.9371   | 0.9313       | 0.9413  |
-|       **0.6** | 0.9029      | 0.9034   | 0.8832       | 0.9166  | 0.7101      | 0.7094   | 0.7052       | 0.7298  | 0.9431       | 0.9431   | 0.9244       | 0.9452  |
-|       **0.7** | 0.9091      | 0.9096   | 0.8923       | 0.9176  | 0.7118      | 0.7100   | 0.7128       | 0.7309  | 0.9452       | 0.9455   | 0.9315       | 0.9463  |
-|       **0.8** | 0.9098      | 0.9114   | 0.8967       | 0.9228  | 0.7148      | 0.7145   | 0.7089       | 0.7319  | 0.9457       | 0.9459   | 0.9359       | 0.9469  |
-|       **0.9** | 0.9148      | 0.9158   | 0.9006       | 0.9239  | 0.7201      | 0.7210   | 0.7138       | 0.7365  | 0.9461       | 0.9467   | 0.9404       | 0.9493  |
+|      **None** | 0.8840      | 0.8814   | 0.8741       | 0.9052  | 0.6563      | 0.6588   | 0.6759       | 0.6958  | 0.9374       | 0.9371   | 0.9278       | 0.9406  |
+|       **0.6** | 0.9029      | 0.9034   | 0.8747       | 0.9165  | 0.7101      | 0.7094   | 0.7062       | 0.7298  | 0.9431       | 0.9431   | 0.9236       | 0.9463  |
+|       **0.7** | 0.9091      | 0.9096   | 0.8951       | 0.9173  | 0.7118      | 0.7100   | 0.7131       | 0.7295  | 0.9452       | 0.9455   | 0.9307       | 0.9465  |
+|       **0.8** | 0.9098      | 0.9114   | 0.8956       | 0.9217  | 0.7148      | 0.7145   | 0.7084       | 0.7335  | 0.9457       | 0.9459   | 0.9328       | 0.9473  |
+|       **0.9** | 0.9148      | 0.9158   | 0.9085       | 0.9228  | 0.7201      | 0.7210   | 0.7107       | 0.7364  | 0.9461       | 0.9467   | 0.9398       | 0.9479  |
 
 **Table 1**: Accuracies of WideResNet-16-8 ensembles, by dynamic loss threshold and fusion strategies.
 
 
-| Data       | CIFAR10  | CIFAR100 | FashionMNIST |
-|------------|----------|----------|--------------|
-| **Fusion** |          |          |              |
-| Average    | 0.974619 | 0.999399 | 0.979239     |
-| MLP        | 0.956017 | 0.998031 | 0.919808     |
-| Vote       | 0.980550 | 0.997606 | 0.975035     |
-| Weighted   | 0.886108 | 0.990659 | 0.269259     |
+|              | CIFAR10 | CIFAR100 | FashionMNIST |
+|-------------:|---------|----------|--------------|
+|  **Average** | 0.975   | 0.999    | 0.979        |
+|      **MLP** | 0.965   | 0.998    | 0.996        |
+|     **Vote** | 0.981   | 0.998    | 0.975        |
+| **Weighted** | 0.685   | 0.985    | 0.421        |
 
 **Table 2**:  Pearson correlations between dynamic loss threshold and ensemble performance, by dataset and fusion method.
 

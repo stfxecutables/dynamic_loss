@@ -232,40 +232,37 @@ def get_epochs(fusion: FusionMethod, pooled: bool) -> int:
 
 def compute_all_ensemble_accs() -> None:
     count = 0
-    for pooled in [False]:  # pooling always bad
-        for shuffled in [False, True]:
-            for ds in [
-                VisionDataset.CIFAR10,
-                VisionDataset.CIFAR100,
-                VisionDataset.FashionMNIST,
-            ]:
-                for fusion in [FusionMethod.MLP, FusionMethod.Weighted]:
-                    for threshold in [None, 0.6, 0.7, 0.8, 0.9]:
-                        if pooled and shuffled:
-                            continue
-                        count += 1
-                        max_epochs = get_epochs(fusion, pooled)
-                        argstr = (
-                            "--experiment=ensemble-eval "
-                            "--subset=full "
-                            f"--dataset={ds.value} "
-                            f"--fusion={fusion.value} "
-                            f"--max_epochs={max_epochs} "
-                            "--batch_size=1024 "
-                            "--lr=3e-4 "
-                            "--num_workers=0"
-                        )
-                        print(f"Evaluating with args:")
-                        print(argstr, f"pooled={pooled}", f"shuffled={shuffled}")
-                        ensemble_eval(
-                            argstr=argstr,
-                            threshold=threshold,
-                            pooled=pooled,
-                            shuffled=shuffled,
-                        )
-                        print("=" * 80)
-                        print(f"Finished run {count} of 90")
-                        print("=" * 80)
+    for ds in [
+        VisionDataset.CIFAR10,
+        VisionDataset.CIFAR100,
+        VisionDataset.FashionMNIST,
+    ]:
+        for fusion in [FusionMethod.MLP, FusionMethod.Weighted]:
+            for threshold in [None, 0.6, 0.7, 0.8, 0.9]:
+                count += 1
+                max_epochs = get_epochs(fusion, pooled=False)
+                argstr = (
+                    "--experiment=ensemble-eval "
+                    "--subset=full "
+                    f"--dataset={ds.value} "
+                    f"--fusion={fusion.value} "
+                    f"--max_epochs={max_epochs} "
+                    "--batch_size=1024 "
+                    "--lr=3e-4 "
+                    "--wd=0 "
+                    "--num_workers=0"
+                )
+                print(f"Evaluating with args:")
+                print(argstr)
+                ensemble_eval(
+                    argstr=argstr,
+                    threshold=threshold,
+                    pooled=False,
+                    shuffled=False,
+                )
+                print("=" * 80)
+                print(f"Finished run {count} of 30")
+                print("=" * 80)
 
 
 def compute_nan_ensemble_accs() -> None:
@@ -285,6 +282,7 @@ def compute_nan_ensemble_accs() -> None:
                     f"--max_epochs={max_epochs} "
                     "--batch_size=1024 "
                     "--lr=3e-4 "
+                    "--wd=1e-4 "
                     "--num_workers=0"
                 )
                 print(f"Evaluating with args:")
@@ -301,5 +299,5 @@ def compute_nan_ensemble_accs() -> None:
 
 
 if __name__ == "__main__":
-    # compute_all_ensemble_accs()
-    compute_nan_ensemble_accs()
+    compute_all_ensemble_accs()
+    # compute_nan_ensemble_accs()
