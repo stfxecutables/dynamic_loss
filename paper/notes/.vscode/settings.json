@@ -1,0 +1,9 @@
+{
+    "markdown.extension.toc.omittedFromToc": {
+    "notes.md": [
+        "# Index",
+        "# Contents",
+        "# Table of Contents",
+    ]
+},
+}

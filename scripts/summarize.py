@@ -19,8 +19,6 @@ from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.svm import SVC
 from torchmetrics.functional import accuracy
 from tqdm import tqdm
-from xgboost import XGBClassifier
-from xgboost.callback import EvaluationMonitor
 
 from src.config import Config
 from src.constants import CC_LOGS, LOG_ROOT_DIR, ON_CCANADA, RESULTS

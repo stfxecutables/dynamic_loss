@@ -205,6 +205,17 @@ def print_all_classic_ensemble_accs() -> None:
     print(df.to_markdown(index=False, floatfmt="0.4f", tablefmt="simple"))
 
 
+def fusion_sorter(s: str) -> str:
+    if s == "Average":
+        return "A"
+    if s == "Vote":
+        return "B"
+    if s == "Weighted":
+        return "C"
+    if s == "MLP":
+        return "D"
+
+
 def print_all_ensemble_accs_everything() -> None:
     pd.options.display.max_rows = 1000
     pd.options.display.max_info_rows = 1000
@@ -232,37 +243,38 @@ def print_all_ensemble_accs_everything() -> None:
     df = df.rename(columns={"acc_test_b": "acc"})
     botched_nan_runs = df["acc"] < 0.2
     df = df.loc[~botched_nan_runs]
+    df["fsort"] = df.fusion.apply(fusion_sorter)
 
     print(
-        df.sort_values(by=["data", "fusion", "thresh"]).to_markdown(
-            index=False, tablefmt="simple"
-        )
+        df.sort_values(by=["data", "fsort", "thresh"])
+        .drop(columns="fsort")
+        .to_markdown(index=False, tablefmt="simple")
     )
     # df["fusion_kind"] = df.fusion.apply(
     #     lambda f: "static" if f in ["Vote", "Average"] else "learned"
     # )
+    pivoted = (
+        df.sort_values(by=["data", "fusion", "fsort"])
+        .drop(columns="fsort")
+        .pivot(index="thresh", columns=["data", "fusion"])
+    )
+    col_order = ["Average", "Vote", "Weighted", "MLP"]
+    pivoted = pivoted.reindex(columns=col_order, level=2)
+    print("Effect of dynamic loss threshold:")
+    print(pivoted)
 
-    print("Threshold test-accuracy correlations")
+    print("\nThreshold test-accuracy correlations")
     corrs = (
-        df.groupby(["data", "fusion"])
+        df.groupby(["data", "fusion", "fsort"])
         .corr()["thresh"]
         .reset_index()
         .iloc[slice(1, None, 2)]
-        .drop(columns="level_2")
+        .drop(columns="level_3")
+        .sort_values(by=["data", "fsort"])
+        .drop(columns="fsort")
+        .pivot(index="fusion", columns="data")
     )
     print(corrs.round(3))
-    print(
-        "Threshold test-accuracy correlations dropping bad CIFAR-100 thresholds 0.8 and 0.9"
-    )
-    idx = (df["data"] == "CIFAR100") & (df["thresh"].isin([0.8, 0.9]))
-    corrs = (
-        df.loc[~idx]
-        .groupby(["data", "fusion"])
-        .corr()["thresh"]
-        .reset_index()
-        .iloc[slice(1, None, 2)]
-        .drop(columns="level_2")
-    )
 
     # print(df.groupby(["data", "fusion"]).corr(method="spearman"))
     return

@@ -13,7 +13,9 @@ reproducibility/*consolidated*.npy
 
 cc_logs
 logs
-paper
+paper/*.pdf
+paper/IEEE
+paper/notes/notes.html
 
 
 ################################################################################
