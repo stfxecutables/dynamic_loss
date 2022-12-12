@@ -1,3 +1,36 @@
+@misc{loshchilovDecoupledWeightDecay2019,
+  title = {Decoupled {{Weight Decay Regularization}}},
+  author = {Loshchilov, Ilya and Hutter, Frank},
+  year = {2019},
+  month = jan,
+  number = {arXiv:1711.05101},
+  eprint = {1711.05101},
+  eprinttype = {arxiv},
+  primaryclass = {cs, math},
+  publisher = {{arXiv}},
+  abstract = {L\$\_2\$ regularization and weight decay regularization are equivalent for standard stochastic gradient descent (when rescaled by the learning rate), but as we demonstrate this is \textbackslash emph\{not\} the case for adaptive gradient algorithms, such as Adam. While common implementations of these algorithms employ L\$\_2\$ regularization (often calling it "weight decay" in what may be misleading due to the inequivalence we expose), we propose a simple modification to recover the original formulation of weight decay regularization by \textbackslash emph\{decoupling\} the weight decay from the optimization steps taken w.r.t. the loss function. We provide empirical evidence that our proposed modification (i) decouples the optimal choice of weight decay factor from the setting of the learning rate for both standard SGD and Adam and (ii) substantially improves Adam's generalization performance, allowing it to compete with SGD with momentum on image classification datasets (on which it was previously typically outperformed by the latter). Our proposed decoupled weight decay has already been adopted by many researchers, and the community has implemented it in TensorFlow and PyTorch; the complete source code for our experiments is available at https://github.com/loshchil/AdamW-and-SGDW},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Machine Learning,Computer Science - Neural and Evolutionary Computing,Mathematics - Optimization and Control},
+  file = {/home/derek/Zotero/storage/XEU98KCL/Loshchilov and Hutter - 2019 - Decoupled Weight Decay Regularization.pdf;/home/derek/Zotero/storage/V23Z57H3/1711.html}
+}
+
+@misc{loshchilovSGDRStochasticGradient2017,
+  title = {{{SGDR}}: {{Stochastic Gradient Descent}} with {{Warm Restarts}}},
+  shorttitle = {{{SGDR}}},
+  author = {Loshchilov, Ilya and Hutter, Frank},
+  year = {2017},
+  month = may,
+  number = {arXiv:1608.03983},
+  eprint = {1608.03983},
+  eprinttype = {arxiv},
+  primaryclass = {cs, math},
+  publisher = {{arXiv}},
+  abstract = {Restart techniques are common in gradient-free optimization to deal with multimodal functions. Partial warm restarts are also gaining popularity in gradient-based optimization to improve the rate of convergence in accelerated gradient schemes to deal with ill-conditioned functions. In this paper, we propose a simple warm restart technique for stochastic gradient descent to improve its anytime performance when training deep neural networks. We empirically study its performance on the CIFAR-10 and CIFAR-100 datasets, where we demonstrate new state-of-the-art results at 3.14\% and 16.21\%, respectively. We also demonstrate its advantages on a dataset of EEG recordings and on a downsampled version of the ImageNet dataset. Our source code is available at https://github.com/loshchil/SGDR},
+  archiveprefix = {arXiv},
+  keywords = {Computer Science - Machine Learning,Computer Science - Neural and Evolutionary Computing,Mathematics - Optimization and Control},
+  file = {/home/derek/Zotero/storage/H6SMZVAM/Loshchilov and Hutter - 2017 - SGDR Stochastic Gradient Descent with Warm Restar.pdf;/home/derek/Zotero/storage/LXQ6ZCT5/1608.html}
+}
+
 @misc{zagoruykoWideResidualNetworks2017,
   title = {Wide {{Residual Networks}}},
   author = {Zagoruyko, Sergey and Komodakis, Nikos},

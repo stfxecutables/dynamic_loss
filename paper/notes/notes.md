@@ -33,8 +33,13 @@ training sets.
 
 ### Training of Base Learners
 
-Each base WR-16-8 learner $i$ is trained on the data $(\mathbfit{x}_{\text{val}}^{(i)},
-\mathbfit{y}_{\text{train}}^{(i)})$ for 50 epochs, using the AdamW optimizer
+Each base WR-16-8 learner $i$ is trained on the data
+$(\mathbfit{x}_{\text{val}}^{(i)}, \mathbfit{y}_{\text{train}}^{(i)})$ for 50
+epochs, using the AdamW optimizer [@loshchilovDecoupledWeightDecay2019] with a
+weight decay of 0.05 , initial learning rate of 0.1, using a batch size of 1024.
+The learning rate was warmed up linearly starting from $10^{-5}$ for 5 epochs, until
+reaching the initial learning rate, and then decayed to a minimum learning rate
+of $10^{-9}$ via cosine annealing [@loshchilovSGDRStochasticGradient2017].
 
 
 
