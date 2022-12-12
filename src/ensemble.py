@@ -18,6 +18,7 @@ from scipy.stats import mode
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.svm import SVC
 from torchmetrics.functional import accuracy
+from tqdm import tqdm
 from xgboost import XGBClassifier
 from xgboost.callback import EvaluationMonitor
 
@@ -204,8 +205,78 @@ def print_all_classic_ensemble_accs() -> None:
     print(df.to_markdown(index=False, floatfmt="0.4f", tablefmt="simple"))
 
 
+def print_all_ensemble_accs_everything() -> None:
+    pd.options.display.max_rows = 1000
+    pd.options.display.max_info_rows = 1000
+
+    outdir = RESULTS / "ensemble_evals"
+    paths = sorted(outdir.rglob("*.json"))
+    dfs = [pd.read_json(js) for js in tqdm(paths, desc="Loading")]
+    df = pd.concat(dfs, axis=0)
+
+    topk_drops = [c for c in df.columns if "top" in c]
+    loss_drops = [c for c in df.columns if "loss" in c]
+    learn_cols = ["lr", "wd", "meta_epochs_l", "meta_epochs_b"]
+    val_cols = [c for c in df.columns if "val" in c]
+    df = df.drop(columns=topk_drops + loss_drops + learn_cols + val_cols)
+
+    pooled = df["pooled"] == True  # these were always worse
+    df = df.loc[~pooled, :]
+    df = df.drop(columns="pooled")
+
+    shuffled = df["shuffled"] == True  # these were also always worse
+    df = df.loc[~shuffled, :]
+    df = df.drop(columns="shuffled")
+
+    df = df.drop(columns="acc_test_l")  # generally same as best, missing for static
+
+    print(
+        df.sort_values(by=["data", "fusion", "thresh"]).to_markdown(
+            index=False, tablefmt="simple"
+        )
+    )
+    # df["fusion_kind"] = df.fusion.apply(
+    #     lambda f: "static" if f in ["Vote", "Average"] else "learned"
+    # )
+    df = df.rename(columns={"acc_test_b": "acc"})
+
+    print("Threshold test-accuracy correlations")
+    corrs = (
+        df.groupby(["data", "fusion"])
+        .corr()["thresh"]
+        .reset_index()
+        .iloc[slice(1, None, 2)]
+        .drop(columns="level_2")
+    )
+    print(corrs.round(3))
+    print(
+        "Threshold test-accuracy correlations dropping bad CIFAR-100 thresholds 0.8 and 0.9"
+    )
+    idx = (df["data"] == "CIFAR100") & (df["thresh"].isin([0.8, 0.9]))
+    corrs = (
+        df.loc[~idx]
+        .groupby(["data", "fusion"])
+        .corr()["thresh"]
+        .reset_index()
+        .iloc[slice(1, None, 2)]
+        .drop(columns="level_2")
+    )
+
+    # print(df.groupby(["data", "fusion"]).corr(method="spearman"))
+    return
+
+    cols = ["data", "fusion", "thresh", "acc_test_b", "top3_test_b", "top5_test_b"]
+    df = df.loc[:, cols]
+    df = df.rename(columns=lambda s: s.replace("test_b", "test")).sort_values(
+        by=["data", "fusion", "thresh"]
+    )
+    print(df.to_markdown(index=False, floatfmt="0.4f", tablefmt="simple"))
+
+
 if __name__ == "__main__":
-    print_all_classic_ensemble_accs()
+    print_all_ensemble_accs_everything()
+    # print_all_classic_ensemble_accs()
     # gradboost(VisionDataset.CIFAR100)
     # knnfit(VisionDataset.CIFAR100)
+    # svcfit(VisionDataset.CIFAR100)
     # svcfit(VisionDataset.CIFAR100)

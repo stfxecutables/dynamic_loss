@@ -231,13 +231,19 @@ def get_epochs(fusion: FusionMethod, pooled: bool) -> int:
 
 
 if __name__ == "__main__":
-    for ds in [VisionDataset.CIFAR10, VisionDataset.CIFAR100, VisionDataset.FashionMNIST]:
-        for fusion in [FusionMethod.MLP, FusionMethod.Weighted]:
-            for threshold in [None, 0.6, 0.7, 0.8, 0.9]:
-                for pooled in [True, False]:
-                    for shuffled in [True, False]:
+    count = 0
+    for pooled in [False]:  # pooling always bad
+        for shuffled in [False, True]:
+            for ds in [
+                VisionDataset.CIFAR10,
+                VisionDataset.CIFAR100,
+                VisionDataset.FashionMNIST,
+            ]:
+                for fusion in [FusionMethod.MLP, FusionMethod.Weighted]:
+                    for threshold in [None, 0.6, 0.7, 0.8, 0.9]:
                         if pooled and shuffled:
                             continue
+                        count += 1
                         max_epochs = get_epochs(fusion, pooled)
                         argstr = (
                             "--experiment=ensemble-eval "
@@ -257,4 +263,6 @@ if __name__ == "__main__":
                             pooled=pooled,
                             shuffled=shuffled,
                         )
-                        sys.exit()
+                        print("=" * 80)
+                        print(f"Finished run {count} of 90")
+                        print("=" * 80)

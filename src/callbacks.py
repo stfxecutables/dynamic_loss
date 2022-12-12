@@ -53,11 +53,11 @@ def ensemble_callbacks(log_version_dir: Path, max_epochs: int) -> list[Callback]
             save_top_k=1,
             save_weights_only=False,
         ),
-        EarlyStopping(
-            monitor="val/acc",
-            patience=max(5, max_epochs // 5),
-            mode="max",
-            check_finite=True
-            # divergence_threshold=-4.0,
-        ),
+        # EarlyStopping(
+        #     monitor="val/acc",
+        #     patience=max(5, max_epochs // 5),
+        #     mode="max",
+        #     check_finite=True
+        #     # divergence_threshold=-4.0,
+        # ),
     ]
