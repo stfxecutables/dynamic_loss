@@ -87,7 +87,7 @@ def summarize_ensemble_accs(config: Config, threshold: float | None) -> DataFram
             torch.from_numpy(vote_maxs), torch.from_numpy(targ), top_k=5
         ).item()
     elif config.fusion is FusionMethod.Average:
-        agg_logits = np.mean(preds, axis=0)  # shape is (n_samples, n_classes)
+        agg_logits = np.nanmean(preds, axis=0)  # shape is (n_samples, n_classes)
         agg_preds = np.argmax(agg_logits, axis=1)
         acc = np.mean(agg_preds == targ)
         top3 = accuracy(
@@ -274,8 +274,9 @@ def print_all_ensemble_accs_everything() -> None:
 
 
 if __name__ == "__main__":
-    print_all_ensemble_accs_everything()
+    # print_all_ensemble_accs_everything()
     # print_all_classic_ensemble_accs()
+    summarize_all_classic_ensemble_accs()
     # gradboost(VisionDataset.CIFAR100)
     # knnfit(VisionDataset.CIFAR100)
     # svcfit(VisionDataset.CIFAR100)

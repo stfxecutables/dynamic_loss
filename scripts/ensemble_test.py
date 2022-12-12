@@ -230,7 +230,7 @@ def get_epochs(fusion: FusionMethod, pooled: bool) -> int:
     raise ValueError()
 
 
-if __name__ == "__main__":
+def compute_all_ensemble_accs() -> None:
     count = 0
     for pooled in [False]:  # pooling always bad
         for shuffled in [False, True]:
@@ -266,3 +266,39 @@ if __name__ == "__main__":
                         print("=" * 80)
                         print(f"Finished run {count} of 90")
                         print("=" * 80)
+
+
+def compute_nan_ensemble_accs() -> None:
+    count = 0
+    for ds in [
+        VisionDataset.CIFAR100,
+    ]:
+        for fusion in [FusionMethod.MLP, FusionMethod.Weighted]:
+            for threshold in [0.8, 0.9]:
+                count += 1
+                max_epochs = get_epochs(fusion, pooled=False)
+                argstr = (
+                    "--experiment=ensemble-eval "
+                    "--subset=full "
+                    f"--dataset={ds.value} "
+                    f"--fusion={fusion.value} "
+                    f"--max_epochs={max_epochs} "
+                    "--batch_size=1024 "
+                    "--lr=3e-4 "
+                    "--num_workers=0"
+                )
+                print(f"Evaluating with args:")
+                print(argstr)
+                ensemble_eval(
+                    argstr=argstr,
+                    threshold=threshold,
+                    pooled=False,
+                    shuffled=False,
+                )
+                print("=" * 80)
+                print(f"Finished run {count} of 90")
+                print("=" * 80)
+
+
+if __name__ == "__main__":
+    compute_all_ensemble_accs()
