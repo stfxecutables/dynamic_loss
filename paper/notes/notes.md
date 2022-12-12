@@ -1,5 +1,7 @@
 ## Updated Methods
 
+New source code is available on GitHub [@dm-bergerStfxecutablesDynamicLoss2022].
+
 We train a WideResNet-16-8 (WR-16-8) [@zagoruykoWideResidualNetworks2017] on CIFAR-10,
 CIFAR-100, and FashionMNIST datasets.
 
@@ -31,15 +33,36 @@ training, stopping, or any decisions on any internal validation metrics, and the
 set functions practicall solely to futher increase variation in the final base-learner
 training sets.
 
-### Training of Base Learners
+### Training and Evaluation of Base Learners
 
-Each base WR-16-8 learner $i$ is trained on the data
+Each base WR-16-8 learner $i$ is trained on each dataset's training data
 $(\mathbfit{x}_{\text{val}}^{(i)}, \mathbfit{y}_{\text{train}}^{(i)})$ for 50
 epochs, using the AdamW optimizer [@loshchilovDecoupledWeightDecay2019] with a
-weight decay of 0.05 , initial learning rate of 0.1, using a batch size of 1024.
+weight decay of 0.05, initial learning rate of 0.1, and using a batch size of 1024.
 The learning rate was warmed up linearly starting from $10^{-5}$ for 5 epochs, until
 reaching the initial learning rate, and then decayed to a minimum learning rate
 of $10^{-9}$ via cosine annealing [@loshchilovSGDRStochasticGradient2017].
+
+The initial learning rate and weight decay were found via grid search on
+CIFAR-100 only, over the learning rates $\{0.001, 0.01, 0.05, 0.1}$ and weight
+decays $\{10^{-4}, 5 \times 10^{-4}, 0.001, 0.005, 0.01, 0.05, 0.1\}$, and
+otherwise using identical training parameters as described above.
+
+Upon completing training, predictions $\hat{\mathbfit{y}}$ were made on the
+full original training data $\mathbfit{x}$, as well as on the full test set
+$\mathbfit{x}_{\text{test}}$, $\hat{\mathbfit{y}}_{\text{test}}$. These raw
+(un-softmaxed) predictions were saved and set aside for later training
+$\hat{\mathbfit{y}}$, and validation $\hat{\mathbfit{y}}_{\text{test}}$ of
+super/meta-learners.
+
+Each base model was trained and evaluated on a single V100 GPU, with each base
+model taking approximately 45 minutes to train. Each model was trained using
+either no dynamic loss threshold, or a dynamic loss threshold in $\{0.6, 0.7,
+0.8, 0.8\}$. Thus, each  base training subset
+$\mathbfit{x}_{\text{train}}^{(i)}$ yielded a total of 5 different models. The
+total training budget was thus 5 * 45min / base model * 3 datasets * 50 base
+models / dataset $\approx$ 24 GPU days.
+
 
 
 
