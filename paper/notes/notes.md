@@ -2,8 +2,12 @@
 
 - [Updated Methods](#updated-methods)
 - [Corrections to Loss Description [IMPORTANT!]](#corrections-to-loss-description-important)
-  - [Issue #1 - Misleading and Unclear Formula](#issue-1---misleading-and-unclear-formula)
+  - [Issue #1 - Dynamic Loss Equation](#issue-1---dynamic-loss-equation)
+    - [Issue #1 - Missing Negative](#issue-1---missing-negative)
+    - [Issue #1 - Missing Simplification #1](#issue-1---missing-simplification)
+    - [Issue #1 - Missing Simplification #2](#issue-1---missing-simplification)
   - [Issue #2 - Incorrect Description of Gradients](#issue-2---incorrect-description-of-gradients)
+    - [Issue #2 - Why the Description is Incorrect](#issue-2---why-the-description-is-incorrect)
   - [Models](#models)
     - [Base Learners](#base-learners)
     - [Super Learners](#super-learners)
@@ -15,6 +19,7 @@
 - [References](#references)
 
 
+
 ## Updated Methods
 
 New source code is available on GitHub [@dm-bergerStfxecutablesDynamicLoss2022].
@@ -23,7 +28,7 @@ New source code is available on GitHub [@dm-bergerStfxecutablesDynamicLoss2022].
 
 There are a number of errors in the current manuscript dynamic loss description.
 
-### Issue #1 - Misleading and Unclear Formula
+### Issue #1 - Dynamic Loss Equation
 
 The previous version of the manuscript defined the dynamic loss $\mathcal{L}_{\text{dyn}}$
 to be, for a classification problem with $c$ classes, and free threshold parameter $\tau$:
@@ -43,8 +48,19 @@ y_i \cdot \log (1.0) & \hat{y}_i \ge \tau \\
 $$
 
 and where $\hat{y}_i$s are the **softmaxed predictions** (this is important)
-such that $\hat{y}_i \in [0, 1]$ and $\sum \hat{y}_i = 1$. This equation is
-***missing an important negative***, and is misleading / confusing as it is
+such that $\hat{y}_i \in [0, 1]$ and $\sum \hat{y}_i = 1$.
+
+#### Issue #1 - Missing Negative
+
+The above equation is ***missing an important negative***:
+
+$$
+\mathcal{L}_{\text{dyn}}(\hat{y}, y) = -\sum_{i=1}^c \mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i)
+$$
+
+#### Issue #1 - Missing Simplification #1
+
+The equation is misleading / confusing as it is
 written, since $\log(1.0)$ is zero, and so we really ought to write that the
 loss simplfies to:
 
@@ -78,8 +94,10 @@ of the constant. I.e. ***the choice of fill value has no impact on the
 gradients, and since the gradients are all that actually matter for the loss
 function, the choice of fill value is also irrelevant***.
 
-In fact, there is technically another issue, because since $\log(ab) = \log(a) + \log(b)$, then:
 
+#### Issue #1 - Missing Simplification #2
+
+In fact, there is technically another issue, because since $\log(ab) = \log(a) + \log(b)$, then:
 
 $$
 \begin{align}
@@ -134,9 +152,56 @@ identically as to when using the cross-entropy loss**^[I saw this when making
 the scaling factor ($\gamma$) a trainable parameter, and in the [loss demo
 script](https://github.com/stfxecutables/dynamic_loss/blob/master/scripts/loss_demonstration.py).
 When made trainable, the scaling factor never changed (gradients to it were
-zero), and even as a constant, the choice of value has no impact on gradients.]
+zero), and even as a constant, the choice of value has no impact on gradients.]. That
+is, the 0.1 and 1.0 values end up being nothing but obscurantisms / distractions,
+and the dynamic loss could be identically (and more clearly and elegantly) defined as:
 
-In addition, the definition of the cross entropy loss (see [PyTorch documentation](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)) for a sample is such that:
+$$
+\mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i) =
+\begin{cases}
+\mathcal{L}^{(i)}_{\text{CE}}(\hat{y}_i, y_i) & \hat{y}_i < \tau \\
+0 & \hat{y}_i \ge \tau \\
+\end{cases}
+$$
+
+
+
+### Issue #2 - Incorrect Description of Gradients
+
+The following description accompanies the original equation (emphasis mine, on
+incorrect parts):
+
+> Any score above this threshold is updated according to equation 1 ($\hat{y}_i > \tau$),
+> while any value below the threshold is downscaled from its
+> original value according to equation 1 ($\hat{y}_i \le \tau$). Thus, the ***approach
+> shares some similarities to a leaky rectified linear unit (ReLU) layer*** [...]
+
+The main purpose of the LeakyReLU is to fix the problem of vanishing gradients
+left of zero by replacing the constant mapping to zero with a linear mapping to
+0.1 times the input. **Since the dynamic loss maps to a constant value, it has
+more in common with the plain ReLU, in that the dynamic loss thresholding
+_destroys_ gradients**. That is the following description:
+
+> This custom loss function supports the creation of soft-max scores that are
+> more indicative of classifier prediction reliability, thus potentially
+> assisting in making incorrect and uncertain predictions more distinguishable
+> from correct predictions. As an illustrative example, assuming a threshold of
+> 0.7, ***if the soft-max value were above 0.7, and the prediction was correct,
+> the weights would be adjusted very slightly, and if the prediction were
+> incorrect, the weights would be adjusted more severely. In the reverse case,
+> if the soft-max value were below the example threshold of 0.7, and the
+> prediction was correct, the weights would be changed more severely. Finally,
+> if the soft-max value were below 0.7 and the prediction was incorrect, the
+> weights would not be changed substantially, since we would have considered
+> the prediction as unreliable anyway***.
+
+is mostly incorrect.
+
+#### Issue #2 - A Note on Classic Cross-Entopy Loss
+
+The definition of the cross entropy loss (see [PyTorch
+documentation](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html))
+for a sample is such that:
 
 $$
 \mathcal{L}(\hat{\mathbfit{y}}, \mathbfit{y}) = -\sum_i^C y_i \log \sigma(\hat{y}_i)
@@ -161,13 +226,19 @@ $$
 = - \sum_{i = c} \big(  y_i \nabla_{\mathbfit{x}} \log \sigma_i(\mathbfit{x}) \big)
 $$
 
+and thus **weight updates for the classic cross-entropy loss come only from
+gradients of the softmax components corresponding to the _correct_ class
+predictions, $\sigma_i(\mathbfit{x})$**.
+
+#### Issue #2 - The Dynamic Loss
 
 
-Now **what is the smallest possible softmax (probability) value that can be
-observed given $C$ classes**? Of course, it is $1/C$, since otherwise the
-probabilities would not sum to zero. Now, the largest possible softmax value
-is 1, which is not helpful, but is there a bound on the *second* largest
-possible softmax value, supposing the largest value is beyond some threshold $\tau$?
+The smallest possible softmax (probability) value that can be observed given
+$C$ classes if of course $1/C$, since otherwise the probabilities would not sum
+to greater than zero. The largest possible softmax value is 1, which is not
+helpful, but is there a bound on the *second* largest possible softmax value,
+supposing the largest value is beyond some threshold $\tau$?
+
 There is.
 
 Specifically, if $\tau$ > 0.5, and $C \ge 2$ (both of which are true in our
@@ -175,93 +246,33 @@ manuscript), then there are in fact only two mutually-exclusive cases
 for the softmax value distributions, due to the requirement that softmax values
 must sum to 1:
 
-1. one softmax value is $> \tau$, and all others are $< \tau$
-2. all softmax values are $\le \tau$
+1. **"Unconfident"**: all softmax values for a sample are $\le \tau$
+2. **"Confident"**: one softmax value for a sample is $> \tau$, and all others are $< \tau$
 
-We have shown above that gradients are identical to cross-entropy gradients in
-case (2), so we need only consider what happens in case (1). When the prediction
-is over-confident, i.e. there is a softmax value $ > \tau$ on the *wrong class*,
-then gradients are identical to those from the cross-entropy loss, since softmax
-values on the incorrect class do not contribute to gradients in the cross-entropy
-loss, and since the dynamic loss also sets these gradients to zero.
+We have shown above that dynamic loss gradients are identical to cross-entropy
+gradients in case (1), since constant multiplication has no effect on gradients
+under the logarithm.  Thus we need only consider what happens in case (2).
 
-This leaves only the case where the prediction is both confident ($> \tau$) and
-correct. In this case, the gradient of the cross-entropy loss is non-zero, but
-the gradient of the dynamic loss is necessarily zero, by definition. *This is
-the only case where the loss functions differ*. We can see this in simulations
+**When the prediction is incorrect and _over_-confident**, i.e. there is a softmax value $> \tau$ on the
+*wrong class*, then gradients are identical to those from the cross-entropy
+loss, since softmax values on the incorrect class do not contribute to
+gradients in the cross-entropy loss, and since the dynamic loss also sets these
+gradients to zero.
+
+**This leaves only the case where the prediction is both confident ($> \tau$) and
+correct**. In this case, *the gradient of the cross-entropy loss is non-zero, but
+the gradient of the dynamic loss is zero, by definition*. This is
+the only case where the loss functions differ. We can see this in simulations
 below.
 
+#### Issue #2 - Simulations of Dynamic Loss Gradient Behaviour
 
-#### What Happens with the Dynamic Loss
+This simulation ([repo script](https://github.com/stfxecutables/dynamic_loss/blob/master/scripts/loss_demonstration.py)) shows that the
+dynamic loss differs from the cross-entropy loss only in that it *prevents* the
+model from updating from correct predictions above the threshold $\tau$.
 
-That is, the
-typical presentation of the cross-entropy loss obscures the fact that **weight
-updates come only from the softmaxed prediction values corresponding to the
-correctly-predicted values**.  Of course, the softmax $\nabla_{\mathbfit{x}}
-\log \sigma_i(\mathbfit{x})$ depends on all components of $\mathbfit{x}$, so
-weight updates do propagate non-sparsely, but
-
-**So what happens if a prediction is incorrect?**. As per the equation directly
-above, if all class softmax values are *below* the threshold $\tau$, then there
-is no difference from the cross-entropy loss. If a softmax value is *above* the
-threshold, but incorrect,
-
-the softmax value must be $\ge 1/C$.
-
-
-
-
-
-
-This can be seen more clearly in the subsequent
-code demonstration.
-
-
-
-
-
-
-
-Since $\nabla(c \cdot f) = c \cdot \nabla f$, this makes it more clear that the
-**dynamic loss is the cross-entropy loss, but with gradients doubled under the
-threshold $\tau$, and zeroed otherwise**. I.e., the dynamic loss *increases*
-learning from low-confidence predictions, and *prevents* learning on confident
-predictions.
-
-### Issue #2 - Incorrect Description of Gradients
-
-The following description accompanies the original equation (emphasis mine, on
-incorrect parts):
-
-> Any score above this threshold is updated according to equation 1 ($\hat{y}_i > \tau$),
-> while any value below the threshold is downscaled from its
-> original value according to equation 1 ($\hat{y}_i \le \tau$). Thus, the ***approach
-> shares some similarities to a leaky rectified linear unit (ReLU) layer*** [...]
-
-In fact, the purpose of the LeakyReLU is to fix the problem of vanishing
-gradients left of zero by replacing the constant mapping to zero with a linear
-mapping to 0.1 times the input. **Since the dynamic loss maps to a constant
-value, it has more in common with the plain ReLU, in that the effect of purpose
-of the dynamic loss thresholding is to _destroy_ gradients**. That is the
-following:
-
-> This custom loss function supports the creation of soft-max scores that are
-> more indicative of classifier prediction reliability, thus potentially
-> assisting in making incorrect and uncertain predictions more distinguishable
-> from correct predictions. As an illustrative example, assuming a threshold of
-> 0.7, ***if the soft-max value were above 0.7, and the prediction was correct,
-> the weights would be adjusted very slightly, and if the prediction were
-> incorrect, the weights would be adjusted more severely. In the reverse case,
-> if the soft-max value were below the example threshold of 0.7, and the
-> prediction was correct, the weights would be changed more severely. Finally,
-> if the soft-max value were below 0.7 and the prediction was incorrect, the
-> weights would not be changed substantially, since we would have considered
-> the prediction as unreliable anyway***.
-
-is mostly incorrect.
-
-You can see this is not the case in from the [demo script in the repo](https://github.com/stfxecutables/dynamic_loss/blob/master/scripts/loss_demonstration.py).
-In this demo, we define an additional "soft dynamic loss", which is defined as:
+In this demo, we define an additional "soft dynamic loss", which is defined (in
+various equivalent forms, as per above) as:
 
 
 \begin{aligned}
@@ -271,25 +282,36 @@ y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < \tau \\
 y_i \cdot \log (\hat{y}_i^{0.1}) & \hat{y}_i \ge \tau \\
 \end{cases} \\
 
-\\
 &=
 \begin{cases}
 y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < \tau \\
 0.1 \cdot y_i \cdot \log (\hat{y}_i) & \hat{y}_i \ge \tau \\
-\end{cases}
+\end{cases} \\
+
+&=
+\begin{cases}
+\mathcal{L}_{\text{CE}}^{(i)}(\hat{y}_i, y_i) & \hat{y}_i < \tau \\
+0.1 \cdot \mathcal{L}_{\text{CE}}^{(i)}(\hat{y}_i, y_i) & \hat{y}_i \ge \tau \\
+
+\end{cases} \\
 \end{aligned}
 
-This truly emulates a LeakyReLU, as gradients are doubled under the threshold,
-and multiplied by 0.1 when over the threshold. This simulation shows that the
-dynamic loss differs from the cross-entropy loss only in that it *prevents* the
-model from updating from correct predictions above the threshold $\tau$.
+The last line shows how this truly emulates a LeakyReLU, as gradients are
+identical under the threshold, ($x > 0$ ReLU or LeakyReLU case; as per above,
+the 0.1 is spurious in here) and multiplied by 0.1 when over the threshold
+(compared to the "hard" dynamic loss, which would zero gradients on these
+values).
 
+
+##### Issue #2 - Simulation Results
 
 
 When a prediction is **correct** and **confident** (above threshold), weights
 are NOT updated for that sample with the dynamic loss. In this case, the soft
 dynamic loss behaves more like the previous manuscript description, updating
-weights less.
+weights less. **This is the only case where the dynamic loss results in different
+behaviour from the cross-entropy loss**.
+
 
 ```
 ================================================================================
@@ -358,9 +380,9 @@ Cross-entropy loss
     [ 0.0974 -0.1564  0.286   0.0076]]
 ```
 
-**When a sample prediction is *in*correct but over-confident (above threshold)
-about this prediction, weights are updated identically to as they would be with
-the cross-entropy loss**.
+When a sample prediction is ***in*correct** but **over-confident (above threshold)**
+about a prediction, weights are updated identically to as they would be with
+the cross-entropy loss.
 
 ```
 ================================================================================
@@ -394,9 +416,9 @@ Gradients on linear layer weights:
     [ 1.4653e+00 -1.7640e-01 -5.2232e+00  7.9100e-02]]
 ```
 
-**When a sample prediction is *in*correct but under-confident (below threshold)
-about this prediction, weights are updated identically to as they would be with
-the cross-entropy loss**.
+When a sample prediction is ***in*correct** but **under-confident (below threshold)**
+about a prediction, weights are updated identically to as they would be with
+the cross-entropy loss.
 
 ```
 ================================================================================
