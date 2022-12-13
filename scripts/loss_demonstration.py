@@ -82,7 +82,7 @@ def loss_alt(threshold: float, r: float) -> Tensor:
 
 
 def dynamic_loss(
-    threshold: float | None, soften: bool
+    threshold: float | None, soften: bool, r: float = 0.1
 ) -> Callable[[Tensor, Tensor], Tensor]:
     """Expects raw linear outputs (e.g. no softmax or sigmoid has
     been applied)
@@ -114,7 +114,7 @@ def dynamic_loss(
         logits = torch.softmax(preds, dim=1)
         logits.retain_grad()
         ones = torch.ones_like(logits, requires_grad=True)
-        shrunk = 0.1 * logits
+        shrunk = r * logits
         if soften:
             scaled = torch.where(logits > threshold, torch.pow(logits, 0.1), shrunk)
         else:
@@ -127,7 +127,9 @@ def dynamic_loss(
 
 
 def compute_gradients(
-    seed: int, thresh: float
+    seed: int,
+    thresh: float,
+    r: float = 0.1,
 ) -> tuple[
     Tensor, Tensor, ndarray, ndarray, Tensor, Tensor, Tensor, Linear, Linear, Linear
 ]:
@@ -135,8 +137,8 @@ def compute_gradients(
 
     # updated seeds
     # torch.manual_seed(16)  # prediction is correct, and above threshold
-    dyn_loss = dynamic_loss(thresh, soften=False)
-    dyn_soft_loss = dynamic_loss(thresh, soften=True)
+    dyn_loss = dynamic_loss(thresh, soften=False, r=r)
+    dyn_soft_loss = dynamic_loss(thresh, soften=True, r=r)
 
     # out final "classifier" linear layer
     lin_args: Mapping = dict(in_features=4, out_features=3, bias=False)
@@ -212,9 +214,7 @@ def compute_gradients(
 
 
 def print_gradients(
-    seed: int,
     thresh: float,
-    w: Tensor,
     correct: ndarray,
     pred: ndarray,
     softmax_dyn: Tensor,
@@ -224,9 +224,8 @@ def print_gradients(
     lin3: Linear,
     lin4: Linear,
 ) -> None:
-    print(f"seed={seed}")
-    print("Linear layer init weights:")
-    print(torch.round(w.detach(), decimals=3).numpy())
+    # print("Linear layer init weights:")
+    # print(torch.round(w.detach(), decimals=3).numpy())
     print(f"\nSoftmaxed inputs to loss function from linear layer")
     print(torch.round(softmax_dyn.detach(), decimals=3).numpy())
     print(f"\nCorrect target:", correct.item(), "\nPrediction:    ", pred.item())
@@ -246,12 +245,9 @@ def print_gradients(
     # print(torch.round(x2.grad, decimals=5).numpy())
 
     print("\nGradients on softmaxed variable:")
-    print("Cross-entropy loss")
-    print(torch.round(softmax_ce.grad, decimals=4).numpy())
-    print("Dynamic loss")
-    print(torch.round(softmax_dyn.grad, decimals=4).numpy())
-    print("Soft dynamic loss")
-    print(torch.round(softmax_dyn_soft.grad, decimals=4).numpy())
+    print("Cross-entropy loss", torch.round(softmax_ce.grad, decimals=5).numpy())
+    print("Dynamic loss      ", torch.round(softmax_dyn.grad, decimals=5).numpy())
+    print("Soft dynamic loss ", torch.round(softmax_dyn_soft.grad, decimals=5).numpy())
     # print("Dynamic loss with learnable thresholds")
     # print(torch.round(softmax_alt.grad, decimals=4).numpy())
 
@@ -261,10 +257,12 @@ def print_gradients(
     print("Dynamic loss")
     print(torch.round(lin1.weight.grad, decimals=5).numpy().round(3))
     print("Soft dynamic loss")
-    print(torch.round(lin3.weight.grad, decimals=5).numpy().round(3))
+    print(torch.round(lin3.weight.grad, decimals=6).numpy().round(4))
 
 
-def demonstrate_grad_flow(correct_pred: bool, confident_pred: float) -> None:
+def demonstrate_grad_flow(
+    correct_pred: bool, confident_pred: float, r: float = 0.1
+) -> None:
     """
     correct_pred: prediction == true value
     confident_pred: largest softmax is above threshold
@@ -275,7 +273,8 @@ def demonstrate_grad_flow(correct_pred: bool, confident_pred: float) -> None:
     # torch.manual_seed(30)  # to demo correct prediction
     # torch.manual_seed(2)  # to demo problem when one pred correct, one pred incorrect
 
-    seeds = list(range(0, 200))
+    # seeds = list(range(0, 200))
+    seeds = list(range(17, 200))
 
     for seed in seeds:
         (
@@ -289,7 +288,7 @@ def demonstrate_grad_flow(correct_pred: bool, confident_pred: float) -> None:
             lin1,
             lin3,
             lin4,
-        ) = compute_gradients(seed, thresh=thresh)
+        ) = compute_gradients(seed, thresh=thresh, r=r)
 
         # make align with `correct_pred` case
         is_correct = bool(correct.item() == pred.item())
@@ -300,23 +299,26 @@ def demonstrate_grad_flow(correct_pred: bool, confident_pred: float) -> None:
         if not (is_confident is confident_pred):
             continue
 
+        print("\n")
         print("=" * 80)
         if correct_pred and confident_pred:
-            print("CORRECT, CONFIDENT (above threshold) prediction:")
+            print(f"CORRECT, CONFIDENT (above threshold) prediction (seed={seed}, r={r})")
         elif correct_pred and (not confident_pred):
-            print("CORRECT, DOUBTFUL (below threshold) prediction:")
+            print(f"CORRECT, DOUBTFUL (below threshold) prediction (seed={seed}, r={r})")
         elif (not correct_pred) and confident_pred:
-            print("INCORRECT, OVERCONFIDENT (above threshold) prediction:")
+            print(
+                f"INCORRECT, OVERCONFIDENT (above threshold) prediction (seed={seed}, r={r})"
+            )
         elif (not correct_pred) and (not confident_pred):
-            print("INCORRECT, DOUBTFUL (below threshold) prediction:")
+            print(
+                f"INCORRECT, DOUBTFUL (below threshold) prediction (seed={seed}, r={r})"
+            )
         else:
             raise RuntimeError("???")
         print("=" * 80)
 
         print_gradients(
-            seed=seed,
             thresh=thresh,
-            w=w,
             correct=correct,
             pred=pred,
             softmax_dyn=softmax_dyn,
@@ -346,7 +348,15 @@ def plot_losses() -> None:
 
 if __name__ == "__main__":
     demonstrate_grad_flow(correct_pred=True, confident_pred=True)
+    demonstrate_grad_flow(correct_pred=True, confident_pred=True, r=0.5)
+
     demonstrate_grad_flow(correct_pred=True, confident_pred=False)
+    demonstrate_grad_flow(correct_pred=True, confident_pred=False, r=0.5)
+
     demonstrate_grad_flow(correct_pred=False, confident_pred=True)
+    demonstrate_grad_flow(correct_pred=False, confident_pred=True, r=0.5)
+
     demonstrate_grad_flow(correct_pred=False, confident_pred=False)
+    demonstrate_grad_flow(correct_pred=False, confident_pred=False, r=0.5)
+
     # plot_losses()
