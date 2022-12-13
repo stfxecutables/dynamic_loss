@@ -128,6 +128,14 @@ $$
 \end{cases}
 $$
 
+i.e. **the dynamic loss results in different model behaviour only when
+softmaxed predictions are above the threshold: otherwise, the model trains
+identically as to when using the cross-entropy loss**^[I saw this when making
+the scaling factor ($\gamma$) a trainable parameter, and in the [loss demo
+script](https://github.com/stfxecutables/dynamic_loss/blob/master/scripts/loss_demonstration.py).
+When made trainable, the scaling factor never changed (gradients to it were
+zero), and even as a constant, the choice of value has no impact on gradients.]
+
 In addition, the definition of the cross entropy loss (see [PyTorch documentation](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)) for a sample is such that:
 
 $$
@@ -138,12 +146,78 @@ i.e. $\mathbfit{y}$ is assumed to be one-hot above. Letting $\mathbfit{x} = \mat
 
 $$
 \begin{align}
-\nabla_{\mathbfit{x}} \mathcal{L}(\mathbfit{x}, \mathbfit{y}) &= \nabla_{\mathbfit{x}} \left(-\sum_i^C y_i \log \sigma(x_i)\right) \\
-&= - \sum_i^C \nabla_{\mathbfit{x}} \left(y_i \log \sigma(x_i)\right) \\
-&= - \sum_i^C \big( (\nabla_{\mathbfit{x}} y_i)  \log \sigma(x_i) + y_i \nabla_{\mathbfit{x}} \log \sigma(x_i) \big)\\
-&= - \sum_i^C \big(  y_i \nabla_{\mathbfit{x}} \log \sigma(x_i) \big)\\
+\nabla_{\mathbfit{x}} \mathcal{L}(\mathbfit{x}, \mathbfit{y}) &= \nabla_{\mathbfit{x}} \left(-\sum_i^C y_i \log \sigma_i(\mathbfit{x})\right) \\
+&= - \sum_i^C \nabla_{\mathbfit{x}} \left(y_i \log \sigma_i(\mathbfit{x})\right) \\
+&= - \sum_i^C \big( (\nabla_{\mathbfit{x}} y_i)  \log \sigma_i(\mathbfit{x}) + y_i \nabla_{\mathbfit{x}} \log \sigma_i(\mathbfit{x}) \big)\\
+&= - \sum_i^C \big(  y_i \nabla_{\mathbfit{x}} \log \sigma_i(\mathbfit{x}) \big)\\
 \end{align}
 $$
+
+Note that if the correct prediction for a sample is $c \in \mathbb{Z}$, then in
+the above equation, $y_j = 0$ if $j \ne c$, and 1 otherwise, so
+
+$$
+\nabla_{\mathbfit{x}} \mathcal{L}(\mathbfit{x}, \mathbfit{y})
+= - \sum_{i = c} \big(  y_i \nabla_{\mathbfit{x}} \log \sigma_i(\mathbfit{x}) \big)
+$$
+
+
+
+Now **what is the smallest possible softmax (probability) value that can be
+observed given $C$ classes**? Of course, it is $1/C$, since otherwise the
+probabilities would not sum to zero. Now, the largest possible softmax value
+is 1, which is not helpful, but is there a bound on the *second* largest
+possible softmax value, supposing the largest value is beyond some threshold $\tau$?
+There is.
+
+Specifically, if $\tau$ > 0.5, and $C \ge 2$ (both of which are true in our
+manuscript), then there are in fact only two mutually-exclusive cases
+for the softmax value distributions, due to the requirement that softmax values
+must sum to 1:
+
+1. one softmax value is $> \tau$, and all others are $< \tau$
+2. all softmax values are $\le \tau$
+
+We have shown above that gradients are identical to cross-entropy gradients in
+case (2), so we need only consider what happens in case (1). When the prediction
+is over-confident, i.e. there is a softmax value $ > \tau$ on the *wrong class*,
+then gradients are identical to those from the cross-entropy loss, since softmax
+values on the incorrect class do not contribute to gradients in the cross-entropy
+loss, and since the dynamic loss also sets these gradients to zero.
+
+This leaves only the case where the prediction is both confident ($> \tau$) and
+correct. In this case, the gradient of the cross-entropy loss is non-zero, but
+the gradient of the dynamic loss is necessarily zero, by definition. *This is
+the only case where the loss functions differ*. We can see this in simulations
+below.
+
+
+#### What Happens with the Dynamic Loss
+
+That is, the
+typical presentation of the cross-entropy loss obscures the fact that **weight
+updates come only from the softmaxed prediction values corresponding to the
+correctly-predicted values**.  Of course, the softmax $\nabla_{\mathbfit{x}}
+\log \sigma_i(\mathbfit{x})$ depends on all components of $\mathbfit{x}$, so
+weight updates do propagate non-sparsely, but
+
+**So what happens if a prediction is incorrect?**. As per the equation directly
+above, if all class softmax values are *below* the threshold $\tau$, then there
+is no difference from the cross-entropy loss. If a softmax value is *above* the
+threshold, but incorrect,
+
+the softmax value must be $\ge 1/C$.
+
+
+
+
+
+
+This can be seen more clearly in the subsequent
+code demonstration.
+
+
+
 
 
 
