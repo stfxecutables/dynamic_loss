@@ -26,7 +26,7 @@ New source code is available on GitHub [@dm-bergerStfxecutablesDynamicLoss2022].
 
 ## Corrections to Loss Description [IMPORTANT!]
 
-There are a number of errors in the current manuscript dynamic loss description.
+There some errors in the current manuscript dynamic loss description.
 
 ### Issue #1 - Dynamic Loss Equation
 
@@ -90,37 +90,16 @@ $$
 $$
 
 because the derivative of a constant function is zero, regardless of the value
-of the constant. I.e. ***the choice of fill value has no impact on the
+of the constant. I.e. ***the choice of fill value $\theta$ has no impact on the
 gradients, and since the gradients are all that actually matter for the loss
 function, the choice of fill value is also irrelevant***.
 
 
 #### Issue #1 - Missing Simplification #2
 
-In fact, there is technically another issue, because since $\log(ab) = \log(a) + \log(b)$, then:
-
-$$
-\begin{align}
--y_i \cdot \log (0.1 \cdot \hat{y}_i) &= y_i \cdot \left( \log (0.1) \cdot \log(\hat{y}_i) \right) \\
-&= \log (0.1) \left( y_i \cdot  \log(\hat{y}_i) \right) \\
-&\approx 2.3 \left( y_i \cdot  \log(\hat{y}_i) \right)
-\end{align}
-$$
-
-So what we *actually* ultimately have, if we denote the classic cross-entropy loss components as $\mathcal{L}^{(i)}_{\text{CE}}$, is
-
-$$
-\mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i) =
-\begin{cases}
-2.3 \cdot \mathcal{L}^{(i)}_{\text{CE}}(\hat{y}_i, y_i) & \hat{y}_i < \tau \\
-0 & \hat{y}_i \ge \tau \\
-\end{cases}
-$$
-
-***But actually it is worse***. Consider any function $f: \mathbb{R}^n \mapsto
-\mathbb{R}$, and any constant $\gamma \in \mathbb{R}$. By the properties of the
-logarithm, then for $x \in \mathbb{R}^n$, and for element-wise logarithm
-$\log$:
+Consider any function $f: \mathbb{R}^n \mapsto \mathbb{R}$, and any constant
+$\gamma \in \mathbb{R}$. By the properties of the logarithm, then for $x \in
+\mathbb{R}^n$, and for element-wise logarithm $\log$:
 
 $$
 \begin{align}
@@ -133,9 +112,32 @@ $$
 See also [logarithmic
 differentiation](https://en.wikipedia.org/wiki/Logarithmic_differentiation).
 Basically, if you are going to take a logarithm, then multiplication by a
-constant does not affect the derivative. Ignoring floating point issues, it
+constant does not affect the derivative.
+
+Ignoring floating point issues, this means it
 doesn't matter if we make our scaling factor 0.1, 69, or 12093.92: the
-gradients are the same. Since the derivative is *all that matters* in a
+gradients are the same under the threshold, i.e. when $\hat{y}_i = x_i < \tau$:
+
+\begin{align}
+
+
+\mathcal{L}_{\text{dyn}}^{(i)}(x_i, y_i) &= y_i \cdot \log (0.1 \cdot x_i) & \qquad x_i < \tau \\
+
+\nabla_x \left( \mathcal{L}_{\text{dyn}}^{(i)}(x_i, y_i) \right)
+
+&= \nabla_x \big( y_i \cdot \log (0.1 \cdot x_i) \big) \\
+
+&= y_i \nabla_x \log (0.1 \cdot x_i) \\
+
+&= y_i \nabla_x \log (x_i) \\
+
+&= \nabla_x \big( y_i \cdot \log (x_i) \big) \\
+
+&= \nabla_x \left( \mathcal{L}_{\text{CE}}^{(i)}(x_i, y_i) \right) \\
+
+\end{align}
+
+Since the derivative is *all that matters* in a
 loss function (actual values are irrelevant), then we actually have:
 
 $$
@@ -251,7 +253,9 @@ must sum to 1:
 
 We have shown above that dynamic loss gradients are identical to cross-entropy
 gradients in case (1), since constant multiplication has no effect on gradients
-under the logarithm.  Thus we need only consider what happens in case (2).
+under the logarithm, and since the dynamic loss in this case is just a constant
+multiplication of the cross-entropy loss.  Thus we need only consider what
+happens in case (2).
 
 **When the prediction is incorrect and _over_-confident**, i.e. there is a softmax value $> \tau$ on the
 *wrong class*, then gradients are identical to those from the cross-entropy
@@ -297,10 +301,12 @@ y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < \tau \\
 \end{aligned}
 
 The last line shows how this truly emulates a LeakyReLU, as gradients are
-identical under the threshold, ($x > 0$ ReLU or LeakyReLU case; as per above,
-the 0.1 is spurious in here) and multiplied by 0.1 when over the threshold
-(compared to the "hard" dynamic loss, which would zero gradients on these
-values).
+identical to those from the cross-entropy loss under the threshold $\tau$, and
+multiplied by 0.1 when over the threshold (compared to the "hard" dynamic loss,
+which would zero gradients on these values).
+
+
+
 
 
 ##### Issue #2 - Simulation Results
@@ -451,6 +457,13 @@ Gradients on linear layer weights:
     [ 0.9135 -2.3119  0.3382  0.956 ]
     [ 0.4772 -1.2077  0.1767  0.4994]]
 ```
+
+Thus, the intuitive explanation of the dynamic loss is simply that it prevents
+learning on confidently, correctly predicted samples (and thus, perhaps,
+prevents overfitting to "easy" samples). This suggests the dynamic loss has
+more in common with **label smoothing** [@mullerWhenDoesLabel2020], where
+highly confident predictions (large softmax values) are randomly penalized.
+
 
 ### Models
 
