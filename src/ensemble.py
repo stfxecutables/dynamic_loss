@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sbn
 import torch
-from pandas import DataFrame
+from pandas import DataFrame, Index
 from scipy.stats import mode
 from sklearn.neighbors import KNeighborsClassifier as KNN
 from sklearn.svm import SVC
@@ -139,6 +139,85 @@ def summarize_ensemble_accs(config: Config, threshold: float | None) -> DataFram
     df.to_json(outfile)
     print(f"Saved results to {outfile}")
     return df
+
+
+def summarize_ensemble_base_accs() -> DataFrame:
+    outdir = RESULTS / "ensemble_base_stats"
+    outdir = outdir / "static"
+    outdir = outdir / "each"
+    outdir.mkdir(exist_ok=True, parents=True)
+    finished = datetime.utcnow().strftime("%Y.%m.%d--%H-%M-%S.%f")
+    outfile = outdir / f"{finished}.json"
+
+    dfs = []
+    for threshold in [None, 0.6, 0.7, 0.8, 0.9]:
+        for ds in [
+            VisionDataset.CIFAR10,
+            VisionDataset.CIFAR100,
+            VisionDataset.FashionMNIST,
+        ]:
+            preds, targs, idxs = consolidate_preds(
+                ds, phase=FinalEvalPhase.Test, threshold=threshold
+            )
+
+            nan_ensembles = np.unique(np.where(np.isnan(preds))[0]).ravel().tolist()
+            preds = np.delete(preds, nan_ensembles, axis=0)
+            targs = np.delete(targs, nan_ensembles, axis=0)
+
+            votes = np.argmax(preds, axis=-1)  # votes[:, i] are labels for sample i
+            agg_logits = np.nanmean(preds, axis=0)  # shape is (n_samples, n_classes)
+            aggs = np.argmax(agg_logits, axis=1)
+
+            ensemble_accs = np.nanmean(votes == targs, axis=1)  # (n_ensembles,)
+            df_accs = DataFrame(ensemble_accs).describe().T
+            df_accs.index = [0]
+            df_data = DataFrame({"data": ds.name}, index=[0])
+            df = DataFrame(
+                {"thresh": threshold if threshold is not None else -1}, index=[0]
+            )
+            df = pd.concat([df_data, df, df_accs], axis=1, ignore_index=False)
+            dfs.append(df)
+            continue
+
+            # sd_acc_vote = np.std(ensemble_accs, ddof=1)
+            # acc_min_vote, acc_max_vote = ensemble_accs.min(), ensemble_accs.max()
+            # acc_avg_vote = np.mean(ensemble_accs)
+
+            # all_accs_agg = np.mean(aggs == targs[0], axis=1)  # (n_ensembles,)
+            # sd_acc_agg = np.std(all_accs_agg, ddof=1)
+            # acc_min_agg, acc_max_agg = all_accs_agg.min(), all_accs_agg.max()
+            # acc_avg_agg = np.mean(all_accs_agg)
+
+            # if config.fusion is FusionMethod.Vote:
+            #     votes = np.argmax(preds, axis=-1)  # votes[:, i] are labels for sample i
+            #     vote_maxs = np.max(preds, axis=0)  # may need to softmax this
+
+            #     vote_preds = mode(votes, axis=0)[0].squeeze()
+            #     acc = np.mean(vote_preds == targ)
+            #     top3 = accuracy(
+            #         torch.from_numpy(vote_maxs), torch.from_numpy(targ), top_k=3
+            #     ).item()
+            #     top5 = accuracy(
+            #         torch.from_numpy(vote_maxs), torch.from_numpy(targ), top_k=5
+            #     ).item()
+            # elif config.fusion is FusionMethod.Average:
+            #     agg_logits = np.nanmean(preds, axis=0)  # shape is (n_samples, n_classes)
+            #     agg_preds = np.argmax(agg_logits, axis=1)
+            #     acc = np.mean(agg_preds == targ)
+            #     top3 = accuracy(
+            #         torch.from_numpy(agg_logits), torch.from_numpy(targ), top_k=3
+            #     ).item()
+            #     top5 = accuracy(
+            #         torch.from_numpy(agg_logits), torch.from_numpy(targ), top_k=5
+            #     ).item()
+            # else:
+            #     raise ValueError("Fusion method not a classic fusion method")
+    df = (
+        pd.concat(dfs, axis=0, ignore_index=False)
+        .drop(columns=["count", "25%", "50%", "75%"])
+        .sort_values(by=["data", "thresh"])
+    )
+    return df.pivot(index="thresh", columns="data")
 
 
 def print_all_classic_results() -> None:
@@ -317,7 +396,8 @@ def print_all_ensemble_accs_everything() -> None:
 
 
 if __name__ == "__main__":
-    print_all_ensemble_accs_everything()
+    summarize_ensemble_base_accs()
+    # print_all_ensemble_accs_everything()
     # print_all_classic_ensemble_accs()
     # summarize_all_classic_ensemble_accs()
     # gradboost(VisionDataset.CIFAR100)

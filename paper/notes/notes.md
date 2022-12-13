@@ -543,7 +543,7 @@ Note also that since
 the internal validation sample $\mathbfit{x}_{\text{val}}^{(i)}$ may contain some samples also
 present in $\mathbfit{x}_{\text{train}}^{(i)}$, due to resampling, we do not condition
 training, stopping, or any decisions on any internal validation metrics, and the validation
-set functions practicall solely to futher increase variation in the final base-learner
+set ultimately functions solely to futher increase variation in the final base-learner
 training sets.
 
 ### Training and Evaluation of Base Learners
@@ -556,24 +556,25 @@ The learning rate was warmed up linearly starting from $10^{-5}$ for 5 epochs, u
 reaching the initial learning rate, and then decayed to a minimum learning rate
 of $10^{-9}$ via cosine annealing [@loshchilovSGDRStochasticGradient2017].
 
-The initial learning rate and weight decay were found via grid search on
-CIFAR-100 only, over the learning rates $\{0.001, 0.01, 0.05, 0.1\}$ and weight
-decays $\{10^{-4}, 5 \times 10^{-4}, 0.001, 0.005, 0.01, 0.05, 0.1\}$, and
-otherwise using identical training parameters as described above.
+The initial learning rate and weight decay described above were found via grid
+search on CIFAR-100 only, over the learning rates $\{0.001, 0.01, 0.05, 0.1\}$
+and weight decays $\{10^{-4}, 5 \times 10^{-4}, 0.001, 0.005, 0.01, 0.05,
+0.1\}$, and otherwise using identical training parameters as described above.
 
 Upon completing training, predictions $\hat{\mathbfit{y}}$ were made on the
-full original training data $\mathbfit{x}$, as well as on the full test set
-$\mathbfit{x}_{\text{test}}$, $\hat{\mathbfit{y}}_{\text{test}}$. These raw
-(un-softmaxed) predictions were saved and set aside for later training
-$\hat{\mathbfit{y}}$, and validation $\hat{\mathbfit{y}}_{\text{test}}$ of
-super/meta-learners.
+full original training data $\mathbfit{x}$, as were predictions
+$\hat{\mathbfit{y}}_{\text{test}}$ as on the full test set
+$\mathbfit{x}_{\text{test}}$. These raw (un-softmaxed) predictions
+$\hat{\mathbfit{y}}$ were saved and set aside for later training of super/meta
+learners, and the validation samples $\hat{\mathbfit{y}}_{\text{test}}$ were
+set aside for testing of those same super/meta-learners.
 
 Each base model was trained and evaluated on a single V100 GPU, with each base
 model taking approximately 45 minutes to train. Each model was trained using
 either no dynamic loss threshold, or a dynamic loss threshold in $\{0.6, 0.7,
-0.8, 0.8\}$. Thus, each  base training subset
+0.8, 0.9\}$. Thus, each  base training subset
 $\mathbfit{x}_{\text{train}}^{(i)}$ yielded a total of 5 different models. The
-total training budget was thus 5 * 45min / base model * 3 datasets * 50 base
+total training and evaluation budget was thus 5 * 45min / base model * 3 datasets * 50 base
 models / dataset $\approx$ 24 GPU days.
 
 
@@ -581,8 +582,12 @@ models / dataset $\approx$ 24 GPU days.
 
 ## Results
 
+There was an exceptionally clear relationship between the dynamic loss threshold and final ensemble performance.
+
 
 ### Tables
+
+####
 
 |          Data | CIFAR10     |          |              |         | CIFAR100    |          |              |         | FashionMNIST |          |              |         |
 |--------------:|-------------|----------|--------------|---------|-------------|----------|--------------|---------|--------------|----------|--------------|---------|
@@ -596,6 +601,9 @@ models / dataset $\approx$ 24 GPU days.
 
 **Table 1**: Accuracies of WideResNet-16-8 ensembles, by dynamic loss threshold and fusion strategies.
 
+<hr>
+
+####
 
 |              | CIFAR10 | CIFAR100 | FashionMNIST |
 |-------------:|---------|----------|--------------|
@@ -605,5 +613,32 @@ models / dataset $\approx$ 24 GPU days.
 | **Weighted** | 0.685   | 0.985    | 0.421        |
 
 **Table 2**:  Pearson correlations between dynamic loss threshold and ensemble performance, by dataset and fusion method.
+
+<hr>
+
+####
+
+|              |               | mean     | std      | min    | max    |
+|-------------:|---------------|----------|----------|--------|--------|
+|     **Data** | **Threshold** |          |          |        |        |
+|      CIFAR10 | -1.0          | 0.847316 | 0.014557 | 0.8102 | 0.8747 |
+|              | 0.6           | 0.871064 | 0.008301 | 0.8463 | 0.8885 |
+|              | 0.7           | 0.878064 | 0.006873 | 0.8640 | 0.8899 |
+|              | 0.8           | 0.881754 | 0.006667 | 0.8582 | 0.8968 |
+|              | 0.9           | 0.884318 | 0.008179 | 0.8638 | 0.8980 |
+|     CIFAR100 | -1.0          | 0.574636 | 0.021818 | 0.4973 | 0.6108 |
+|              | 0.6           | 0.633200 | 0.009395 | 0.6100 | 0.6489 |
+|              | 0.7           | 0.636844 | 0.008167 | 0.6137 | 0.6533 |
+|              | 0.8           | 0.640447 | 0.008345 | 0.6173 | 0.6584 |
+|              | 0.9           | 0.645869 | 0.006691 | 0.6276 | 0.6588 |
+| FashionMNIST | -1.0          | 0.930534 | 0.001941 | 0.9261 | 0.9350 |
+|              | 0.6           | 0.935220 | 0.001925 | 0.9294 | 0.9387 |
+|              | 0.7           | 0.937574 | 0.001824 | 0.9336 | 0.9418 |
+|              | 0.8           | 0.938620 | 0.001485 | 0.9356 | 0.9414 |
+|              | 0.9           | 0.939708 | 0.001945 | 0.9343 | 0.9428 |
+
+**Table 3**: Base learner accuracy statistics by dataset and dynamic loss threshold.
+
+<hr>
 
 # References
