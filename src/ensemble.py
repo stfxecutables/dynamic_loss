@@ -217,7 +217,7 @@ def summarize_ensemble_base_accs() -> DataFrame:
         .drop(columns=["count", "25%", "50%", "75%"])
         .sort_values(by=["data", "thresh"])
     )
-    return df.pivot(index="thresh", columns="data")
+    return df.pivot(index=["data", "thresh"], columns=[])
 
 
 def print_all_classic_results() -> None:
