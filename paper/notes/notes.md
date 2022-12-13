@@ -6,17 +6,28 @@
     - [Issue #1 - Missing Negative](#issue-1---missing-negative)
     - [Issue #1 - Missing Simplification #1](#issue-1---missing-simplification)
     - [Issue #1 - Missing Simplification #2](#issue-1---missing-simplification)
-  - [Issue #2 - Incorrect Description of Gradients](#issue-2---incorrect-description-of-gradients)
-    - [Issue #2 - Why the Description is Incorrect](#issue-2---why-the-description-is-incorrect)
-  - [Models](#models)
-    - [Base Learners](#base-learners)
-    - [Super Learners](#super-learners)
-    - [Static Aggregation / Fusion Methods](#static-aggregation--fusion-methods)
-  - [Splitting Procedure](#splitting-procedure)
-  - [Training and Evaluation of Base Learners](#training-and-evaluation-of-base-learners)
+  - [Issue #2 - Incorrect Description of Weight Updates](#issue-2---incorrect-description-of-weight-updates)
+    - [Issue #2 - A Note on Classic Cross-Entopy Loss](#issue-2---a-note-on-classic-cross-entopy-loss)
+    - [Issue #2 - The Dynamic Loss](#issue-2---the-dynamic-loss)
+    - [Issue #2 - Simulations of Dynamic Loss Gradient Behaviour](#issue-2---simulations-of-dynamic-loss-gradient-behaviour)
+      - [Issue #2 - Simulation Results](#issue-2---simulation-results)
+    - [Nans in Training with Dynamic Loss](#nans-in-training-with-dynamic-loss)
+- [Models](#models)
+  - [Base Learners](#base-learners)
+  - [Super Learners](#super-learners)
+  - [Static Aggregation / Fusion Methods](#static-aggregation--fusion-methods)
+- [Splitting Procedure](#splitting-procedure)
+- [Training and Evaluation of Base Learners](#training-and-evaluation-of-base-learners)
 - [Results](#results)
   - [Tables](#tables)
+    - [Table 1: Ensemble Accuracies](#table-1-ensemble-accuracies)
+    - [Table 2: Accuracy-Threshold Correlations](#table-2-accuracy-threshold-correlations)
+    - [Table 3: Base Ensemble Performance](#table-3-base-ensemble-performance)
 - [References](#references)
+
+
+
+
 
 
 
@@ -26,7 +37,7 @@ New source code is available on GitHub [@dm-bergerStfxecutablesDynamicLoss2022].
 
 ## Corrections to Loss Description [IMPORTANT!]
 
-There some errors in the current manuscript dynamic loss description.
+There are some errors in the current manuscript dynamic loss description.
 
 ### Issue #1 - Dynamic Loss Equation
 
@@ -166,9 +177,11 @@ $$
 \end{cases}
 $$
 
+where $\mathcal{L}^{(i)}_{\text{CE}}$ is the usual component of the cross-entropy loss.
 
 
-### Issue #2 - Incorrect Description of Gradients
+
+### Issue #2 - Incorrect Description of Weight Updates
 
 The following description accompanies the original equation (emphasis mine, on
 incorrect parts):
@@ -197,7 +210,11 @@ _destroys_ gradients**. That is the following description:
 > weights would not be changed substantially, since we would have considered
 > the prediction as unreliable anyway***.
 
-is mostly incorrect.
+is mostly incorrect. In actual fact, weight updates from the dynamic loss
+are identical to those from the cross-entropy loss in most cases, and when
+updates are not identical, this is because the dynamic loss causes no updates
+whatsoever: the dynamic loss is rather a "hard" loss which destroys gradients
+above the threshold $\tau$.
 
 #### Issue #2 - A Note on Classic Cross-Entopy Loss
 
@@ -221,7 +238,7 @@ $$
 $$
 
 Note that if the correct prediction for a sample is $c \in \mathbb{Z}$, then in
-the above equation, $y_j = 0$ if $j \ne c$, and 1 otherwise, so
+the above equation, $y_i = 0$ if $i \ne c$, and 1 otherwise, so
 
 $$
 \nabla_{\mathbfit{x}} \mathcal{L}(\mathbfit{x}, \mathbfit{y})
@@ -230,7 +247,7 @@ $$
 
 and thus **weight updates for the classic cross-entropy loss come only from
 gradients of the softmax components corresponding to the _correct_ class
-predictions, $\sigma_i(\mathbfit{x})$**.
+predictions, $\sigma_i(\mathbfit{x})$**, where $i = c$ for corect class $c$.
 
 #### Issue #2 - The Dynamic Loss
 
@@ -464,15 +481,23 @@ prevents overfitting to "easy" samples). This suggests the dynamic loss has
 more in common with **label smoothing** [@mullerWhenDoesLabel2020], where
 highly confident predictions (large softmax values) are randomly penalized.
 
+#### NaNs in Training with Dynamic Loss
 
-### Models
+With a high dynamic loss threshold in $\{0.8, 0.9\}$, it was occasionally
+possible for the loss to devolve entirely to NaNs. This happened only for
+CIFAR-100 1/50 times when the threshold was 0.8, and 2/50 times when the
+threshold was 0.9. In addition, all models using the dynamic loss required
+a learning rate $1/10^{\text{th}}$ of the learning rate found via tuning with
+the usual cross-entropy loss.
 
-#### Base Learners
+## Models
+
+### Base Learners
 
 We train WideResNet-16-8 (WR-16-8) [@zagoruykoWideResidualNetworks2017] base
 learners on CIFAR-10, CIFAR-100, and FashionMNIST datasets.
 
-#### Super Learners
+### Super Learners
 
 Suppose we have an ensemble of $E$ trained base learners, and the raw
 (un-softmaxed) predictions on $N$ samples for each of these learners, and where
@@ -518,7 +543,7 @@ final performances were evaluated on $\hat{\mathbf{Y}}_{\text{test}}$ using the
 weights from training epoch with the best validation accuracy on a 10% subset
 of $\hat{\mathbf{Y}}_{\text{train}}$ (early stopping).
 
-#### Static Aggregation / Fusion Methods
+### Static Aggregation / Fusion Methods
 
 We also compared the impact of the dynamic loss on two classic model fusion
 methods: voting and averaging ("Vote" and "Average" in Tables 1 and 2,
@@ -531,7 +556,7 @@ Code for these implementations is available
 
 
 
-### Splitting Procedure
+## Splitting Procedure
 
 Each dataset has official training data $\mathbfit{x}$ with labels
 $\mathbfit{y}$ and test data $(\mathbfit{x}_{\text{test}},
@@ -559,7 +584,7 @@ training, stopping, or any decisions on any internal validation metrics, and the
 set ultimately functions solely to futher increase variation in the final base-learner
 training sets.
 
-### Training and Evaluation of Base Learners
+## Training and Evaluation of Base Learners
 
 Each base WR-16-8 learner $i$ is trained on each dataset's training data
 $(\mathbfit{x}_{\text{val}}^{(i)}, \mathbfit{y}_{\text{train}}^{(i)})$ for 50
@@ -569,10 +594,15 @@ The learning rate was warmed up linearly starting from $10^{-5}$ for 5 epochs, u
 reaching the initial learning rate, and then decayed to a minimum learning rate
 of $10^{-9}$ via cosine annealing [@loshchilovSGDRStochasticGradient2017].
 
+
 The initial learning rate and weight decay described above were found via grid
 search on CIFAR-100 only, over the learning rates $\{0.001, 0.01, 0.05, 0.1\}$
 and weight decays $\{10^{-4}, 5 \times 10^{-4}, 0.001, 0.005, 0.01, 0.05,
 0.1\}$, and otherwise using identical training parameters as described above.
+This search was done using the classical cross-entropy loss: base
+models were trained with the dynamic loss were trained with an initial learning rate
+of 0.01, $1/10^{\text{th}}$ of the learning rate of those with the classic
+cross-entropy loss, since larger rates resulted in NaNs.
 
 Upon completing training, predictions $\hat{\mathbfit{y}}$ were made on the
 full original training data $\mathbfit{x}$, as were predictions
@@ -600,7 +630,7 @@ There was an exceptionally clear relationship between the dynamic loss threshold
 
 ### Tables
 
-####
+#### Table 1: Ensemble Accuracies
 
 |          Data | CIFAR10     |          |              |         | CIFAR100    |          |              |         | FashionMNIST |          |              |         |
 |--------------:|-------------|----------|--------------|---------|-------------|----------|--------------|---------|--------------|----------|--------------|---------|
@@ -616,7 +646,7 @@ There was an exceptionally clear relationship between the dynamic loss threshold
 
 <hr>
 
-####
+#### Table 2: Accuracy-Threshold Correlations
 
 |              | CIFAR10 | CIFAR100 | FashionMNIST |
 |-------------:|---------|----------|--------------|
@@ -629,7 +659,7 @@ There was an exceptionally clear relationship between the dynamic loss threshold
 
 <hr>
 
-####
+#### Table 3: Base Ensemble Performance
 
 |              |               | mean     | std      | min    | max    |
 |-------------:|---------------|----------|----------|--------|--------|
