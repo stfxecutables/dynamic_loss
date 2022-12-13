@@ -490,6 +490,21 @@ threshold was 0.9. In addition, all models using the dynamic loss required
 a learning rate $1/10^{\text{th}}$ of the learning rate found via tuning with
 the usual cross-entropy loss.
 
+Nevertheless, all models trained with the dynamic loss seemed to benefit from
+a learning rate $1/10^{\text{th}}$ of the magnitude of the learning rate found
+to be best when using the classical cross-entropy loss, in that larger learning
+rates *extremly* freqeuently resulted in Nan losses.
+
+This is likely a numerical stability issue, in that the dynamic loss prevents
+the use of the more numerically-stable
+[`CrossEntropyLoss`](https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html),
+and requires the manual computation of softmax and logarithm values. The
+"zeroing" of gradients from the dynamic loss means that naive logarithms will
+be computed for values very lose to or equal to zero, resulting in negative
+infinity and/or NaN values in some unlucky cases. When implementing my own
+trainable version of the dynamic loss, I had to add a stability epsilon to
+prevent such issues ([source](https://github.com/stfxecutables/dynamic_loss/blob/master/src/dynamic_loss.py#L139)).
+
 ## Models
 
 ### Base Learners
