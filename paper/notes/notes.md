@@ -26,7 +26,7 @@ There are a number of errors in the current manuscript dynamic loss description.
 ### Issue #1 - Misleading and Unclear Formula
 
 The previous version of the manuscript defined the dynamic loss $\mathcal{L}_{\text{dyn}}$
-to be, for a classification problem with $c$ classes, and free threshold parameter $T$:
+to be, for a classification problem with $c$ classes, and free threshold parameter $\tau$:
 
 $$
 \mathcal{L}_{\text{dyn}}(\hat{y}, y) = \sum_{i=1}^c \mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i)
@@ -37,8 +37,8 @@ where
 $$
 \mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i) =
 \begin{cases}
-y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < T \\
-y_i \cdot \log (1.0) & \hat{y}_i \ge T \\
+y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < \tau \\
+y_i \cdot \log (1.0) & \hat{y}_i \ge \tau \\
 \end{cases}
 $$
 
@@ -50,8 +50,8 @@ is zero, and so we really ought to write that the loss simplfies to:
 $$
 \mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i) =
 \begin{cases}
-y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < T \\
-0 & \hat{y}_i \ge T \\
+y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < \tau \\
+0 & \hat{y}_i \ge \tau \\
 \end{cases}
 $$
 
@@ -60,8 +60,8 @@ This ends up being important, because, as we shall see, if we define:
 $$
 \mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i; \theta) =
 \begin{cases}
-y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < T \\
-\theta & \hat{y}_i \ge T \\
+y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < \tau \\
+\theta & \hat{y}_i \ge \tau \\
 \end{cases}
 $$
 
@@ -77,21 +77,48 @@ of the constant. I.e. ***the choice of fill value has no impact on the
 gradients, and since the gradients are all that actually matter for the loss
 function, the choice of fill value is also irrelevant***.
 
+In fact, there is technically another issue, because since $\log(ab) = \log(a) + \log(b)$, then:
+
+
+$$
+\begin{align}
+-y_i \cdot \log (0.1 \cdot \hat{y}_i) &= y_i \cdot \left( \log (0.1) \cdot \log(\hat{y}_i) \right) \\
+&= \log (0.1) \left( y_i \cdot  \log(\hat{y}_i) \right) \\
+&\approx 2.3 \left( y_i \cdot  \log(\hat{y}_i) \right)
+\end{align}
+$$
+
+So what we *actually* ultimately have, if we denote the classic cross-entropy loss components as $\mathcal{L}^{(i)}_{\text{CE}}$, is
+
+$$
+\mathcal{L}_{\text{dyn}}^{(i)}(\hat{y}_i, y_i) =
+\begin{cases}
+2.3 \cdot \mathcal{L}^{(i)}_{\text{CE}}(\hat{y}_i, y_i) & \hat{y}_i < \tau \\
+0 & \hat{y}_i \ge \tau \\
+\end{cases}
+$$
+
+Since $\nabla(c \cdot f) = c \cdot \nabla f$, this makes it more clear that the
+**dynamic loss is the cross-entropy loss, but with gradients doubled under the
+threshold $\tau$, and zeroed otherwise**. I.e., the dynamic loss *increases*
+learning from low-confidence predictions, and *prevents* learning on confident
+predictions.
+
 ### Issue #2 - Incorrect Description of Gradients
 
 The following description accompanies the original equation (emphasis mine, on
 incorrect parts):
 
-> Any score above this threshold is updated according to equation 1 ($\hat{y}_i > T$),
+> Any score above this threshold is updated according to equation 1 ($\hat{y}_i > \tau$),
 > while any value below the threshold is downscaled from its
-> original value according to equation 1 ($\hat{y}_i \le T$). Thus, the ***approach
+> original value according to equation 1 ($\hat{y}_i \le \tau$). Thus, the ***approach
 > shares some similarities to a leaky rectified linear unit (ReLU) layer*** [...]
 
 In fact, the purpose of the LeakyReLU is to retain (diminished) gradients left
 of zero by replacing the constant mapping to zero with a linear mapping to 0.1
-times the input. **Since the dynamic loss also maps to a constant value, it has
+times the input. **Since the dynamic loss maps to a constant value, it has
 more in common with the plain ReLU, in that the effect of purpose of the
-dynamic loss thresholding is to _destroy_ gradients**.
+dynamic loss thresholding is to _destroy_ gradients**. That is the following:
 
 > This custom loss function supports the creation of soft-max scores that are
 > more indicative of classifier prediction reliability, thus potentially
@@ -106,7 +133,68 @@ dynamic loss thresholding is to _destroy_ gradients**.
 > weights would not be changed substantially, since we would have considered
 > the prediction as unreliable anyway***.
 
+is mostly incorrect.
 
+You can see this is not the case in from the [demo script in the repo](https://github.com/stfxecutables/dynamic_loss/blob/master/scripts/loss_demonstration.py).
+In this demo, we define an additional "soft dynamic loss", which is defined as:
+
+
+\begin{aligned}
+\mathcal{L}_{\text{soft}}^{(i)}(\hat{y}_i, y_i) &=
+\begin{cases}
+y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < \tau \\
+y_i \cdot \log (\hat{y}_i^{0.1}) & \hat{y}_i \ge \tau \\
+\end{cases} \\
+
+\\
+&=
+\begin{cases}
+y_i \cdot \log (0.1 \cdot \hat{y}_i) & \hat{y}_i < \tau \\
+0.1 \cdot y_i \cdot \log (\hat{y}_i) & \hat{y}_i \ge \tau \\
+\end{cases}
+\end{aligned}
+
+This truly emulates a LeakyReLU, as gradients are doubled under the threshold,
+and multiplied by 0.1 when over the threshold. Here as some samples from the
+script:
+
+**Both predictions incorrect**
+
+```
+Softmaxed inputs to loss function (threshold=0.3)
+[[0.587 0.413]
+ [0.025 0.975]]
+
+Correct targets:
+[[0]
+ [0]]
+
+Preds after argmax:
+[[0]
+ [1]]
+
+Gradients on raw linear outputs:
+Cross-entropy loss
+[[-0.20656  0.20656]
+ [-0.48766  0.48766]]
+Dynamic loss
+[[ 0.       0.     ]
+ [-0.48766  0.48766]]
+Soft dynamic loss
+[[-0.02066  0.02066]
+ [-0.48766  0.48766]]
+
+Gradients on softmaxed variable:
+Cross-entropy loss
+[[ -0.8519   0.    ]
+ [-20.2611   0.    ]]
+Dynamic loss
+[[  0.       0.    ]
+ [-20.2611   0.    ]]
+Soft dynamic loss
+[[ -0.0852   0.    ]
+ [-20.2611   0.    ]]
+```
 
 ### Models
 
